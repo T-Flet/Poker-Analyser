@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.0
+--          0.1
 --
 --      Description:
 --          Poker analysing shell.
@@ -28,8 +28,8 @@ data Card = Card {value :: Value, suit :: Suit} deriving (Eq, Ord, Show, Read)
 data Suit = Spades | Clubs | Diamonds | Hearts deriving (Eq, Ord, Show, Read)
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
             | Jack | Queen | King | Ace deriving (Eq, Ord, Show, Read)
-
--- type Hand = (Card v1 s1, Card v2 s2) deriving (Eq, Ord, Show, Read)
+data Hand = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight | Flush
+            | FullHouse | FourOfAKind | StraightFlush | RoyalFlush
 
 
 main = do
