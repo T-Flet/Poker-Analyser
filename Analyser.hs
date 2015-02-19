@@ -30,6 +30,7 @@ data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
             | Jack | Queen | King | Ace deriving (Eq, Ord, Show, Read)
 data Hand = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight | Flush
             | FullHouse | FourOfAKind | StraightFlush | RoyalFlush
+            deriving (Eq, Ord, Show, Read)
 
 
 main = do
