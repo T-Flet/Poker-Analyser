@@ -35,3 +35,19 @@ data Hand = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight | Flush
 
 main = do
     print "Hello, world!"
+
+
+bestHand :: [Card] -> Hand
+bestHand cs
+    | isRoyalFlush    scs = RoyalFlush
+    | isStraightFlush scs = StraightFlush
+    | isFourOfAKind   scs = FourOfAKind
+    | isFullHouse     scs = FullHouse
+    | isFlush         scs = Flush
+    | isStraight      scs = Straight
+    | isThreeOfAKind  scs = ThreeOfAKind
+    | isTwoPair       scs = TwoPair
+    | isOnePair       scs = OnePair
+    | isHighCard      scs = HighCard
+        where scs = sort cs
+
