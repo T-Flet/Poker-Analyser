@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.1
+--          0.2
 --
 --      Description:
 --          Poker analysing shell.
@@ -39,6 +39,8 @@ main = do
     print "Hello, world!"
 
 
+-- CONSIDER USING APPLICATIVE FUNCTOR STYLE FOR THIS FUNCTION, WITH CUSTOM FUNCTOR, PERHAPS
+-- AND THE maybe FUNCTION TO EXTRACT HANDS FROM Maybe TYPES
 -- bestHand :: [Card] -> Hand
 -- bestHand cs
 --     | isRoyalFlush    scs = RoyalFlush
@@ -53,3 +55,4 @@ main = do
 --     | isHighCard      scs = HighCard
 --         where scs = sort cs
 
+--isRoyalFlush :: [Card] -> Maybe Hand
