@@ -25,22 +25,26 @@
 ---- 1 - IMPORTS AND TYPE DECLARATIONS -----------------------------------------
 
 data Card = Card {value :: Value, suit :: Suit} deriving (Eq, Ord, Show, Read)
-data Suit = Spades | Clubs | Diamonds | Hearts deriving (Eq, Ord, Show, Read)
+data Suit = Spades | Clubs | Diamonds | Hearts deriving (Eq, Ord, Enum, Show, Read)
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
-            | Jack | Queen | King | Ace deriving (Eq, Ord, Show, Read)
+            | Jack | Queen | King | Ace deriving (Eq, Ord, Enum, Show, Read)
 data HandType = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight | Flush
             | FullHouse | FourOfAKind | StraightFlush | RoyalFlush
-                deriving (Eq, Ord, Show, Read)
+                deriving (Eq, Ord, Enum, Show, Read)
 data Hand = Hand {kind :: HandType, cards :: [Card]}
                 deriving (Eq, Ord, Show, Read)
 
 
 main = do
-    print "Hello, world!"
+    line <- getLine
+    let myHand = read line :: Hand
+    print myHand
 
 
 -- CONSIDER USING APPLICATIVE FUNCTOR STYLE FOR THIS FUNCTION, WITH CUSTOM FUNCTOR, PERHAPS
+-- OR MONADIC STYLE, PERHAPS do NOTATION
 -- AND THE maybe FUNCTION TO EXTRACT HANDS FROM Maybe TYPES
+-- USE succ FROM Enum TYPECLASS FOR NEXT ELEMENT IN CLASS
 -- bestHand :: [Card] -> Hand
 -- bestHand cs
 --     | isRoyalFlush    scs = RoyalFlush
@@ -56,3 +60,9 @@ main = do
 --         where scs = sort cs
 
 --isRoyalFlush :: [Card] -> Maybe Hand
+--
+--
+-- MAKE ALL THESE FUNCTIONS ASSUME THE PREVIOUS ONE HAS RAN?
+-- AND, PERHAPS MAKE THEM THE SAME FUNCTIONS THAT RETURN HAND PROBABILITIES?
+-- MAKE THEM WORK BY COUNTING THE CARDS THAT ARE NOT "OUT"?
+-- AND PERHAPS ALL POSSIBLE OTHER PLAYERS' HANDS?
