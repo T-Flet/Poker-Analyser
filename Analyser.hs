@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.3
+--          0.3 - 26-27/02/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -27,17 +27,27 @@
 
 ---- 0 - TO DO and TO CONSIDER -------------------------------------------------
 
+--MAKE Probability A FUNCTOR? MONAD? WHICH IS PASSED AROUND,
+--AND WHEN 100% RETURN A Hand, FALL THROUGH WITH IT (THIS IN THE besthand FUNCTION)
+
+--ADD THE WHOLE CARD LIST TO THE Probability DATA TYPE TO CARRY AROUND?
+
+--foldr'S step VS MONAD BEHAVIOUR
+
+-- STRUCTURING CAN BE THE FOLLOWING:
+--  ONE FUNCTION TAKES THE TABLE AND RETURNS Probability OF ALL HandtypeS;
+--  THEN THE PLAYER'S HAND IS TAKEN IN AND MAPPED OVER THE PROBABILITIES;
+--  EITHER STOP AT THE FIRST 100% OR DO THEM ALL (OR BE LAZY AFTER THE FIRST ONE)
+
+--PROBABLY MAKE THE foldr's step FUNCTION (NEED A BETTER NAME) GLOBAL
+
 -- CONSIDER USING APPLICATIVE FUNCTOR STYLE FOR THIS FUNCTION, WITH CUSTOM FUNCTOR, PERHAPS
--- OR MONADIC STYLE, PERHAPS do NOTATION
--- AND THE maybe FUNCTION TO EXTRACT HANDS FROM Maybe TYPES
---          AMENDMENT: FIND Either EQUIVALENT OF maybe FUNCTION
 -- USE succ FROM Enum TYPECLASS FOR NEXT ELEMENT IN CLASS
 --          FIND A WAY TO MAKE succ WORK WITH Card
 --          OR, ALTERNATIVELY, MAKE A FUNCTION WICH CAN LIST CARDS, ALL OR NOT
 
---PERHAPS MAKE isStraightFlush return RoyalFlush or StraightFlush; it optimises time
---PERHAPS MAKE THESE FUNCTIONS BE :: [Card] -> Either Probability Hand
-
+--MAKE isStraightFlush return RoyalFlush or StraightFlush; IT OPTIMISES TIME
+--MAKE THESE FUNCTIONS BE :: [Card] -> Probability
 -- MAKE ALL THESE FUNCTIONS ASSUME THE PREVIOUS ONE HAS RUN?
 -- MAKE THEM WORK BY COUNTING THE CARDS THAT ARE NOT "OUT"?
 -- AND PERHAPS ALL POSSIBLE OTHER PLAYERS' HANDS?
@@ -72,18 +82,11 @@ main = do
 
 
 -- bestHand :: [Card] -> Hand
--- bestHand cs
---     | isRoyalFlush    scs = RoyalFlush
---     | isStraightFlush scs = StraightFlush
---     | isFourOfAKind   scs = FourOfAKind
---     | isFullHouse     scs = FullHouse
---     | isFlush         scs = Flush
---     | isStraight      scs = Straight
---     | isThreeOfAKind  scs = ThreeOfAKind
---     | isTwoPair       scs = TwoPair
---     | isOnePair       scs = OnePair
---     | isHighCard      scs = HighCard
---         where scs = sort cs
+-- bestHand cs = getBestHand $ sort cs
 
---isRoyalFlush :: [Card] -> Either Probability Hand
+--isStraightFlush :: [Card] -> Probability
+--isStraightFlush cs = foldr step (pure :: Probability) cs ???????
+
+--
+--
 
