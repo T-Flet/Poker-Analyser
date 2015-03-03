@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.4 - 27-28/02/2015
+--          0.5 - 02-03/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -104,8 +104,28 @@ main = do
 
 ---- 3 - OTHER FUNCTIONS -------------------------------------------------------
 
--- bestHand :: [Card] -> Hand
--- bestHand cs = getBestHand $ sort cs
+bestHand :: [Card] -> Hand
+bestHand cs = probsToHand scs . foldr getCard [] scs
+    where scs = sort cs
+-- Perhaps accumulator should already contain a Probability for each hand? Or not
+
+
+probsToHand :: [Cards] -> [Probability] -> Hand
+probsToHand scs prs = Hand (foldr step HighCard prs) scs
+    where step pr ht
+            | chance pr == 1 && k > ht = k
+            | otherwise                = ht
+                where k = pKind pr
+        -- If the Probabilities are sorted, just use last . takeWhile (chance pr == 1)
+
+
+getCard :: Card -> Probability -> Probability
+-- Perhaps this will actually just become >>= or <*> or fmap
+
+
+aimingFor :: [Probability] -> Probability
+-- Perhaps this should just be bestChance
+
 
 --isStraightFlush :: [Card] -> Probability
 --isStraightFlush cs = foldr step (pure :: Probability) cs ???????
