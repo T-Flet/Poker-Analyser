@@ -64,7 +64,7 @@
 
 -- let a = [Card Spades King, Card Hearts Queen, Card Clubs Jack]
 -- let b = [Probability HighCard 1 [], Probability FullHouse 0.3 [Left Ace], Probability Straight 0.8 [Right Diamonds]]
--- probsToHand (sort a) (reverse $ sort b)
+-- let Hand = probsToHand (sort a) (reverse $ sort b)
 
 
 
