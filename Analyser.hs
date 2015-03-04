@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.5 - 02-03/03/2015
+--          0.6 - 03-04/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -20,6 +20,7 @@
 --
 --   Sections:
 --       0 - TO DO and TO CONSIDER
+--       00- Testing Data
 --       1 - Imports and Type declarations
 --       2 - Main Functions
 --       3 - Other Functions
@@ -57,6 +58,13 @@
 -- MAKE ALL THESE FUNCTIONS ASSUME THE PREVIOUS ONE HAS RUN?
 -- MAKE THEM WORK BY COUNTING THE CARDS THAT ARE NOT "OUT"?
 -- AND PERHAPS ALL POSSIBLE OTHER PLAYERS' HANDS?
+
+
+---- 00 - TESTING DATA ---------------------------------------------------------
+
+-- let a = [Card Spades King, Card Hearts Queen, Card Clubs Jack]
+-- let b = [Probability HighCard 1 [], Probability FullHouse 0.3 [Left Ace], Probability Straight 0.8 [Right Diamonds]]
+-- probsToHand (sort a) (reverse $ sort b)
 
 
 
@@ -104,26 +112,23 @@ main = do
 
 ---- 3 - OTHER FUNCTIONS -------------------------------------------------------
 
-bestHand :: [Card] -> Hand
-bestHand cs = probsToHand scs . foldr getCard [] scs
-    where scs = sort cs
+-- bestHand :: [Card] -> Hand
+-- bestHand cs = probsToHand scs . foldr getCard [] scs
+--     where scs = sort cs
 -- Perhaps accumulator should already contain a Probability for each hand? Or not
 
-
-probsToHand :: [Cards] -> [Probability] -> Hand
-probsToHand scs prs = Hand (foldr step HighCard prs) scs
-    where step pr ht
-            | chance pr == 1 && k > ht = k
-            | otherwise                = ht
-                where k = pKind pr
-        -- If the Probabilities are sorted, just use last . takeWhile (chance pr == 1)
+    -- Assumes Probabilities are sorted by descending kind
+    -- and that at least one has a 100% chance
+probsToHand :: [Card] -> [Probability] -> Hand
+probsToHand scs prs = Hand ht scs
+    where ht = pKind . head . dropWhile ((/= 1) . chance) $ prs
 
 
-getCard :: Card -> Probability -> Probability
+--getCard :: Card -> Probability -> Probability
 -- Perhaps this will actually just become >>= or <*> or fmap
 
 
-aimingFor :: [Probability] -> Probability
+--aimingFor :: [Probability] -> Probability
 -- Perhaps this should just be bestChance
 
 
