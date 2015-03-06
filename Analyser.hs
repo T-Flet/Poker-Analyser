@@ -32,7 +32,12 @@
 
 -- INTRODUCE quality FIELD IN Prob, REPRESENTING HOW GOOD A HandType IT IS
 -- AMONG ALL POSSIBLE SAME HandTypes
-    -- PERHAPS IT SHOULD BE IN HandType INSTEAD?
+    -- PERHAPS IT SHOULD BE IN Hand INSTEAD?
+    -- REGARDLESS:
+        -- NEED A SET OF BIJECTIONS (ONE PER HandType)
+        -- F: HandType x |-> [0..numberOfAllPossibleShuchHandTypes-1]
+            -- OR PERHAPS FROM 1 TO (NOT -1)
+            -- E.G. : HighCard -> [0..13-1]
 
 -- FUNCTION whatProb WHICH IS GIVEN THE PRESENT CARDS AND STUFF LIKE
 -- Either Value Suit OR [Card] AND RETURNS THE PROBABILITY OF GETTING SUCH A
@@ -40,26 +45,11 @@
     -- PERHAPS THE need FIELD IN Prob SHOULD BE OF THE TYPE OF THAT STUFF
     -- OR Prob SHOULD ALSO HAVE A cards FIELD LIKE Hand.
 
---IN WHICH CASE (OR NOT) MAKE IT A FUNCTOR OR MONAD SO THAT CARDS ARE PASSED TO
---IT ONE BY ONE AND EVERYTHING GETS UPDATED?
-
---IF THE "FINAL" FUNCTIONS WHICH CHECK THE CARDS ARE THE SAME IN ANY OF THESE SITUATIONS,
---START WITH THOSE
---      [Card] -> Prob
-
---foldr'S step VS MONAD BEHAVIOUR
-
 -- STRUCTURING CAN BE THE FOLLOWING:
 --  ONE FUNCTION TAKES THE TABLE AND RETURNS Prob OF ALL HandtypeS;
 --  THEN THE PLAYER'S HAND IS TAKEN IN AND MAPPED OVER THE PROBABILITIES;
 --  EITHER STOP AT THE FIRST 100% OR DO THEM ALL (OR BE LAZY AFTER THE FIRST ONE)
 
---PROBABLY MAKE THE foldr's step FUNCTION (NEED A BETTER NAME) GLOBAL
-
--- CONSIDER USING APPLICATIVE FUNCTOR STYLE FOR THIS FUNCTION, WITH CUSTOM FUNCTOR, PERHAPS
-
---MAKE isStraightFlush return RoyalFlush or StraightFlush; IT OPTIMISES TIME
---MAKE THESE FUNCTIONS BE :: [Card] -> Prob
 -- MAKE ALL THESE FUNCTIONS ASSUME THE PREVIOUS ONE HAS RUN?
 -- MAKE THEM WORK BY COUNTING THE CARDS THAT ARE NOT "OUT"?
 -- AND PERHAPS ALL POSSIBLE OTHER PLAYERS' HANDS?
@@ -137,34 +127,40 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 -- changeProbs :: [Card] -> Card -> [Prob] -> [Prob]
 -- changeProbs scs c [rF, sF, fK, fH, fl, st, tK, tP, oP, hC] =
 --                 [rF', sF', fK', fH', fl', st', tK', tP', oP', hC']
---     where (rF', sF', fl')           = flushesProbs  scs c
---           (fK', fH', tK', tP', oP') = nOfAKindProbs scs c
---           st                        = straightProb  scs c
---           hC'                       = highCardProb  scs c
+--     where (rF', sF', fl')           = flushesProbs  (rF, sF, fl) scs c
+--           (fK', fH', tK', tP', oP') = nOfAKindProbs (fK, fH, tz, tP, oP) scs c
+--           st'                       = straightProb  st scs c
+--           hC'                       = highCardProb  hC scs c
 
 
 --aimingFor :: [Prob] -> Prob
 -- Perhaps this should just be bestChance
 
     -- Returns Probabilities of RoyalFlush, StraightFlush and Flush
--- flushesProbs :: [Card] -> Card -> (Prob,Prob,Prob)
+-- flushesProbs :: (Prob,Prob,Prob) -> [Card] -> Card -> (Prob,Prob,Prob)
+-- flushesProbs (rF, sF, fl) scs c
 
 
 
     -- Returns Probabilities of FourOfAKind, FullHouse, ThreeOfAKind, TwoPair and OnePair
--- nOfAKindProbs :: [Card] -> Card -> (Prob,Prob,Prob,Prob,Prob)
+-- nOfAKindProbs :: (Prob,Prob,Prob,Prob,Prob) -> [Card] -> Card -> (Prob,Prob,Prob,Prob,Prob)
+-- nOfAKindProbs (fK, fH, tz, tP, oP) scs c =
 
 
 
     -- Returns the Probability of a Straight
--- straightProb :: [Card] -> Card -> Prob
--- straightProb scs c =
+-- straightProb :: Prob -> [Card] -> Card -> Prob
+-- straightProb st scs c =
 
 
 
     -- Returns the Probability of a HighCard
--- highCardProb :: [Card] -> Card -> Prob
--- highCardProb scs c = Prob HighCard 1 []
+-- highCardProb :: Prob -> [Card] -> Card -> Prob
+-- highCardProb hC scs c = Prob HighCard 1 []
 
 
+type Qual = Int
+    -- Returns the Quality of a HighCard
+highCardQual :: Hand -> Qual
+highCardQual h = fromEnum . head $ h
 
