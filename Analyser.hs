@@ -71,9 +71,10 @@
 -- THE ONES THAT WOULD BEAT THE PLAYER'S OWN.
 
 
--- NOTE: THERE CAN BE A CRUDER VERSION OF QUALITY OF HANDS: NOT SORTING ALL
+-- NOTE: THERE CAN BE A CRUDER VERSION OF QUALITY OF HANDS: BY NOT SORTING ALL
 -- SINGLE POSSIBLE ONES BUT BY GROUPING THEM BY KINDS.
--- E.G. SORT FULLHOUSES BY WHAT IS THE TRIS OF AND WHAT IS THE PAIR OF.
+-- E.G. SORT FULLHOUSES BY WHAT THE TRIS IS OF AND WHAT THE PAIR IS OF.
+
 
 
 ---- 00 - TESTING DATA ---------------------------------------------------------
@@ -129,9 +130,8 @@ main = do
 ---- 3 - OTHER FUNCTIONS -------------------------------------------------------
 
 -- bestHand :: [Card] -> Hand
--- bestHand cs = probsToHand scs . foldr addCard noProbs scs
+-- bestHand cs = probsToHand scs . snd $ foldr addCard noProbs scs
 --     where scs = sort cs
---           addCard = changeProbs scs
 
     -- Assumes Probabilities are sorted by descending HandType
     -- and that at least one has a 100% chance
@@ -145,9 +145,9 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 
     -- Change the existing probabilities on existing list of cards by taking a
     -- new card into consideration
--- changeProbs :: [Card] -> Card -> [Prob] -> [Prob]
--- changeProbs scs c [rF, sF, fK, fH, fl, st, tK, tP, oP, hC] =
---                 [rF', sF', fK', fH', fl', st', tK', tP', oP', hC']
+-- addCard :: Card -> [Prob] -> [Prob]
+-- addCard c (scs, [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]) =
+--              (c:scs, [rF', sF', fK', fH', fl', st', tK', tP', oP', hC'])
 --     where (rF', sF', fl')           = flushesProbs  (rF, sF, fl) scs c
 --           (fK', fH', tK', tP', oP') = nOfAKindProbs (fK, fH, tz, tP, oP) scs c
 --           st'                       = straightProb  st scs c
@@ -159,13 +159,21 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 
     -- Returns Probabilities of RoyalFlush, StraightFlush and Flush
 -- flushesProbs :: (Prob,Prob,Prob) -> [Card] -> Card -> (Prob,Prob,Prob)
--- flushesProbs (rF, sF, fl) scs c
+-- flushesProbs (rF, sF, fl) scs c = (rF', sF', fl')
+--    where rF' =
+--          sF' =
+--          fl' =
 
 
 
     -- Returns Probabilities of FourOfAKind, FullHouse, ThreeOfAKind, TwoPair and OnePair
 -- nOfAKindProbs :: (Prob,Prob,Prob,Prob,Prob) -> [Card] -> Card -> (Prob,Prob,Prob,Prob,Prob)
--- nOfAKindProbs (fK, fH, tz, tP, oP) scs c =
+-- nOfAKindProbs (fK, fH, tz, tP, oP) scs c = (fK', fH', tK', tP', oP')
+--    where fK' =
+--          fH' =
+--          tK' =
+--          tP' =
+--          oP' =
 
 
 
