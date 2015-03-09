@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.7 - 04-05/03/2015
+--          0.8 - 08-09/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -28,9 +28,17 @@
 
 ---- 0 - TO DO and TO CONSIDER -------------------------------------------------
 
--- REALLY THINK ABOUT INCREMENTAL VS COMPREHENSIVE PROIBABILITY DETERMINATION
+-- CONSIDER REMOVING THE HandType VALUE FROM Hand AND Prob, AND JUST MAKE
+-- Data.MapS (DICTIONARIES) OF ( (HandType,Prob) AND (HandType,Hand) ) OR
+-- (HandType,Either Prob Hand)
+
+-- REALLY THINK ABOUT INCREMENTAL VS COMPREHENSIVE PROBABILITY DETERMINATION
 
 -- PERHAPS GROUP straightProb AND highCardProb TOGETHER
+
+-- INTRODUCE better (OR SOMETHING SIMILAR) FIELD IN Prob, REPRESENTING THE
+-- SMALLEST CARD REQUIRED TO GET A BETTER HAND THAN THE PRESENT.
+-- IT IS DIFFERENT FROM THE need FIELD, AND IT SHOULD WORK WITH IT
 
 -- INTRODUCE quality FIELD IN Prob, REPRESENTING HOW GOOD A HandType IT IS
 -- AMONG ALL POSSIBLE SAME HandTypes
@@ -87,7 +95,7 @@
 
 ---- 1 - IMPORTS AND TYPE DECLARATIONS -----------------------------------------
 
-import Data.List (sort)
+import Data.List (sort, sortBy)
 
 
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
@@ -108,7 +116,7 @@ instance Enum Card where
     fromEnum c = (fromEnum $ value c) + ((*13) . fromEnum $ suit c)
     enumFrom c = dropWhile (<c) [Card s v |
         s <- enumFrom $ (minBound :: Suit), v <- enumFrom $ (minBound :: Value)]
--- All the other Enum functions are automatically defined from toEnum and fromEnum
+-- All the other Enum functions are automatically derived from toEnum and fromEnum
 
 data Hand = Hand {hKind :: HandType, cards :: [Card]}
                 deriving (Eq, Ord, Show)
@@ -128,6 +136,16 @@ main = do
 
 
 ---- 3 - OTHER FUNCTIONS -------------------------------------------------------
+
+    -- Sort cards by value without care for suit (normal sort is by suit first)
+sortByValue :: [Card] -> [Card]
+sortByValue cs = sortBy cmpVal cs
+    where cmpVal c1 c2
+            | v1 >  v2 = GT
+            | v1 == v2 = EQ
+            | v1 <  v2 = LT
+                where v1 = value c1
+                      v2 = value c2
 
 -- bestHand :: [Card] -> Hand
 -- bestHand cs = probsToHand scs . snd $ foldr addCard noProbs scs
@@ -163,6 +181,10 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 --    where rF' =
 --          sF' =
 --          fl' =
+--
+--              -- Cards left to extract in Texas Hold'em (one card is 'c')
+--          left = 6 - length scs
+--
 
 
 
