@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.8 - 08-09/03/2015
+--          0.9 - 09-10/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -27,6 +27,11 @@
 --
 
 ---- 0 - TO DO and TO CONSIDER -------------------------------------------------
+
+-- SHOULD THE NUMBER OF PLAYERS BE A GLOBAL VARIABLE? OR SHOULD IT BE PASSED
+-- AROUND?
+
+-- ADD AN "OR" CLAUSE IN THE need FIELD OF Prob
 
 -- CONSIDER REMOVING THE HandType VALUE FROM Hand AND Prob, AND JUST MAKE
 -- Data.MapS (DICTIONARIES) OF ( (HandType,Prob) AND (HandType,Hand) ) OR
@@ -87,7 +92,7 @@
 
 ---- 00 - TESTING DATA ---------------------------------------------------------
 
--- let a = [Card Spades King, Card Hearts Queen, Card Clubs Jack]
+-- let a = [Card King Spades, Card Queen Hearts, Card Jack Clubs]
 -- let b = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
 -- let h = probsToHand (sort a) (reverse $ sort b)
 
@@ -95,7 +100,7 @@
 
 ---- 1 - IMPORTS AND TYPE DECLARATIONS -----------------------------------------
 
-import Data.List (sort, sortBy)
+import Data.List (sort, sortBy, groupBy)
 
 
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
@@ -109,12 +114,14 @@ data HandType = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight | Flush
             | FullHouse | FourOfAKind | StraightFlush | RoyalFlush
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
 
-data Card = Card {suit :: Suit, value :: Value}
+data Card = Card {value :: Value, suit :: Suit}
                 deriving (Eq, Ord, Show)
 instance Enum Card where
-    toEnum i   = Card (toEnum (i`div`13) :: Suit) (toEnum (i`mod`13) :: Value)
+    toEnum i   = Card (toEnum (i`mod`13) :: Value) (toEnum (i`div`13) :: Suit)
     fromEnum c = (fromEnum $ value c) + ((*13) . fromEnum $ suit c)
-    enumFrom c = dropWhile (<c) [Card s v |
+        -- This enumFrom is in deck order (suit first), while actual card
+        -- comparison is by value first
+    enumFrom c = dropWhile (<c) [Card v s |
         s <- enumFrom $ (minBound :: Suit), v <- enumFrom $ (minBound :: Value)]
 -- All the other Enum functions are automatically derived from toEnum and fromEnum
 
@@ -130,22 +137,28 @@ data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit
 
 main = do
     line <- getLine
-    let myHand = read line :: (Suit, Value)
+    let myHand = read line :: (Value, Suit)
     print $ Card (fst myHand) (snd myHand)
 
 
 
 ---- 3 - OTHER FUNCTIONS -------------------------------------------------------
 
-    -- Sort cards by value without care for suit (normal sort is by suit first)
-sortByValue :: [Card] -> [Card]
-sortByValue cs = sortBy cmpVal cs
-    where cmpVal c1 c2
-            | v1 >  v2 = GT
-            | v1 == v2 = EQ
-            | v1 <  v2 = LT
+    -- Classic mathematical function
+choose :: Int -> Int -> Int
+n `choose` k = product [k+1..n] `div` product [1..n-k]
+
+    -- Sort cards by suit first (as in deck order)
+sortBySuit :: [Card] -> [Card]
+sortBySuit cs = sortBy cmpSui cs
+    where cmpSui c1 c2
+            | s1 >  s2 = GT
+            | s1 == s2 = compare v1 v2
+            | s1 <  s2 = LT
                 where v1 = value c1
                       v2 = value c2
+                      s1 = suit  c1
+                      s2 = suit  c2
 
 -- bestHand :: [Card] -> Hand
 -- bestHand cs = probsToHand scs . snd $ foldr addCard noProbs scs
@@ -180,11 +193,21 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 -- flushesProbs (rF, sF, fl) scs c = (rF', sF', fl')
 --    where rF' =
 --          sF' =
---          fl' =
+--          fl' = Prob Flush flChance flNeed
+--
+--              MAKE THIS BETTER BY CONSIDERING ALL SUITS GROUPS!!!!
+--          flChance = n `choose` k
+--              where n = 52 - 2*nPlayers - (length scs + 1)
+--
+--              -- Number (SOON LIST OF NUMBERS) of required cards of the same suit
+--          required = 5 - (length $ head suitGroups)
 --
 --              -- Cards left to extract in Texas Hold'em (one card is 'c')
 --          left = 6 - length scs
 --
+--              -- Split cards by suits and order them by size of sets
+--          suitGroups = sort . groupBy eqSuit $ sortBySuit scs
+--          eqSuit c1 c2 = (suit c1) == (suit c2)
 
 
 
