@@ -28,6 +28,10 @@
 
 ---- 0 - TO DO and TO CONSIDER -------------------------------------------------
 
+-- EVEN IF THE INCREMENTAL PROBABILITY ENDS UP NOT BEING IMPLEMENTED, MAKE IT
+-- SO THAT EVERYTHING IS FIRST CALCULATED FOR THE TABLE SO THAT PROBABILITIES
+-- FOR ALL PLAYERS ARE KNOWN, AND THEN APPLY IT TO THE SPECIFIC PLAYER'S HAND
+
 -- SHOULD THE NUMBER OF PLAYERS BE A GLOBAL VARIABLE? OR SHOULD IT BE PASSED
 -- AROUND?
 
@@ -160,9 +164,11 @@ sortBySuit cs = sortBy cmpSui cs
                       s1 = suit  c1
                       s2 = suit  c2
 
+    -- Return the hand the player actually has
 -- bestHand :: [Card] -> Hand
 -- bestHand cs = probsToHand scs . snd $ foldr addCard noProbs scs
 --     where scs = sort cs
+
 
     -- Assumes Probabilities are sorted by descending HandType
     -- and that at least one has a 100% chance
@@ -170,9 +176,11 @@ probsToHand :: [Card] -> [Prob] -> Hand
 probsToHand scs prs = Hand hT scs
     where hT = pKind . head . dropWhile ((/= 1) . chance) $ prs
 
+
     -- List of "empty" probabilities in descending HandType
 noProbs :: [Prob]
 noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
+
 
     -- Change the existing probabilities on existing list of cards by taking a
     -- new card into consideration
@@ -195,15 +203,15 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 --          sF' =
 --          fl' = Prob Flush flChance flNeed
 --
---              MAKE THIS BETTER BY CONSIDERING ALL SUITS GROUPS!!!!
---          flChance = n `choose` k
---              where n = 52 - 2*nPlayers - (length scs + 1)
---
---              -- Number (SOON LIST OF NUMBERS) of required cards of the same suit
---          required = 5 - (length $ head suitGroups)
+--          flChance = (1/) . sum $ map (n `choose`) ks
+--              where n  = 52 - 2*(nPlayers - 1) - (length scs + 1)
+--                    ks =
 --
 --              -- Cards left to extract in Texas Hold'em (one card is 'c')
 --          left = 6 - length scs
+--
+--              -- Number of required cards of the same suits
+--          required = map (5-) $ map length suitGroups
 --
 --              -- Split cards by suits and order them by size of sets
 --          suitGroups = sort . groupBy eqSuit $ sortBySuit scs
