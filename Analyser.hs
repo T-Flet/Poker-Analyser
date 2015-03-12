@@ -28,6 +28,10 @@
 
 ---- 0 - TO DO and TO CONSIDER -------------------------------------------------
 
+-- IN GENERAL: NEED TO IMPLEMENT CONDITIONAL PROBABILITIES (A|B) IN ORDER TO
+-- CATER FOR THE FACT THAT SOME CARDS THAT ARE NEEDED FOR A HAND COULD HAVE
+-- ALREADY BEEN EXTRACTED AND BE IN OTHER PLAYERS' HANDS.
+
 -- EVEN IF THE INCREMENTAL PROBABILITY ENDS UP NOT BEING IMPLEMENTED, MAKE IT
 -- SO THAT EVERYTHING IS FIRST CALCULATED FOR THE TABLE SO THAT PROBABILITIES
 -- FOR ALL PLAYERS ARE KNOWN, AND THEN APPLY IT TO THE SPECIFIC PLAYER'S HAND
@@ -203,12 +207,20 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 --          sF' =
 --          fl' = Prob Flush flChance flNeed
 --
---          flChance = (1/) . sum $ map (n `choose`) ks
+--          flChance = sum $ map check required
 --              where n  = 52 - 2*(nPlayers - 1) - (length scs + 1)
---                    ks =
+--                    check x
+--                      | x > left  = 0
+--                      | otherwise = (1/) . choose n x
+--              ---- NEED TO CARRY AROUND OR, IN GENERAL, KNOW WHAT SUIT IS BEING CONSIDERED.
+--              ---- ALSO, NEED TO TAKE INTO ACCOUNT THE CONDITIONAL (A|B) PROBABILITY
+--              ---- OF EXTRACTING THE NEEDED NUMBER OF CARDS OF THE SPECIFIC SUITS GIVEN
+--              ---- THAT left CARDS WILL BE/HAVE BEEN EXTRACTED. (THE choose RIGHT
+--              ---- BEFORE THESE COMMENTS SHOULD BE SUCH A CONDITIONAL ONE).
 --
 --              -- Cards left to extract in Texas Hold'em (one card is 'c')
 --          left = 6 - length scs
+--              ---- WRONG: NOT CONSIDERING DISCARDED CARDS, DIFFERENT AT EACH TURN.
 --
 --              -- Number of required cards of the same suits
 --          required = map (5-) $ map length suitGroups
