@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.9 - 09-10/03/2015
+--          0.10 - 13-14/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -157,6 +157,40 @@ main = do
     line <- getLine
     let myHand = read line :: (Value, Suit)
     print $ Card (fst myHand) (snd myHand)
+
+-- SOME LOOP WHICH TAKES A LINE AND FEEDS IT TO A FUNCTION WHICH TAKES A STATE
+-- AND RETURNS A STRING TO PRINT AND A NEW STATE
+
+
+
+-- THE PREVIOUSLY MENTIONED FUNCTION
+-- PERHAPS LATER MADE AS REGEXES (IF MAKING IT SAFER IS DIFFICULT IN THIS WAY)
+-- gameShell :: State -> String -> (State,String)
+-- gameShell s cmd = case cmd of
+--         -- Set players number
+--     ('p':' ':n)               -> (setPlayers s (read n :: Int),
+--                                   "Players number set to " ++ ps)
+--         -- Player x is dealer
+--         -- Back one action
+--     ('b':_)                   -> (lastState s,
+--                                   "Revoked last action: " ++ lastAction s)
+--         -- Set initial hand
+--     ('h':' ':v1:s1:' ':v2:s2) -> let cs = map toCard [(v1,s1),(v2,s2)]
+--                                  in (startHand s cs,
+--                                      "Starting hand added: " ++ (show cs))
+--         -- Discard n cards (it can happen)
+--     ('d':' ':n)               -> (discard s (read n :: Int),
+--                                   "Discarded " ++ n ++ " cards")
+--         -- Flop MIGHT CHANGE TO Three IF f IS NEEDED BY Fold
+--     ('f':' ':v1:s1:' ':v2:s2:' ':v3:s3) -> let hs = map shortHand [(v1,s1),(v2,s2),(v3,s3)]
+--                                            in (addCards s hs,
+--                                               "Flop added: " ++ (show cs))
+--         -- Add card
+--
+--         -- Player x Folds, Raises, Bets by amount a
+--
+--         -- Otherwise: not a recognised command
+--     _            -> (s, "Command not recognised")
 
 
 
