@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.10 - 13-14/03/2015
+--          0.11 - 14-15/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -150,6 +150,17 @@ data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit
                 deriving (Eq, Ord, Show)
 
 
+data Player = Player {num :: Int, balance :: Int}
+    -- EVENTUALLY INTRODUCE STATISTICS TRACKING IN HERE
+
+data Frame = Frame {playersNum:: Int, dealer :: Int,
+                    table :: [Card], hand :: [Card],
+                    players :: [Player]}
+                    -- The actual player is the first (0) in players list
+
+type State = [Frame]
+
+
 
 ---- 2 - MAIN FUNCTIONS --------------------------------------------------------
 
@@ -165,32 +176,53 @@ main = do
 
 -- THE PREVIOUSLY MENTIONED FUNCTION
 -- PERHAPS LATER MADE AS REGEXES (IF MAKING IT SAFER IS DIFFICULT IN THIS WAY)
--- gameShell :: State -> String -> (State,String)
--- gameShell s cmd = case cmd of
---         -- Set players number
---     ('p':' ':n)               -> (setPlayers s (read n :: Int),
---                                   "Players number set to " ++ ps)
---         -- Player x is dealer
---         -- Back one action
---     ('b':_)                   -> (lastState s,
---                                   "Revoked last action: " ++ lastAction s)
---         -- Set initial hand
---     ('h':' ':v1:s1:' ':v2:s2) -> let cs = map toCard [(v1,s1),(v2,s2)]
---                                  in (startHand s cs,
---                                      "Starting hand added: " ++ (show cs))
---         -- Discard n cards (it can happen)
---     ('d':' ':n)               -> (discard s (read n :: Int),
---                                   "Discarded " ++ n ++ " cards")
---         -- Flop MIGHT CHANGE TO Three IF f IS NEEDED BY Fold
---     ('f':' ':v1:s1:' ':v2:s2:' ':v3:s3) -> let hs = map shortHand [(v1,s1),(v2,s2),(v3,s3)]
---                                            in (addCards s hs,
---                                               "Flop added: " ++ (show cs))
---         -- Add card
---
---         -- Player x Folds, Raises, Bets by amount a
---
---         -- Otherwise: not a recognised command
---     _            -> (s, "Command not recognised")
+--gameShell :: State -> String -> (State,String)
+--gameShell s cmd = case cmd of
+--        -- Set players number
+--    ('p':'s':' ':n:_) ->
+--                 (setPlayers s (read n :: Int),
+--                  "Players number set to " ++ ps)
+--        -- Player x is dealer (the actual player is the first in whichever direction)
+--    ('p':x:'d':_) ->
+--                 (plIsDealer s (read x :: Int),
+--                  "Player " ++ x ++ " is dealer")
+--        -- Back one action
+--    ('b':_) ->
+--                 (lastState s,
+--                  "Revoked last action: " ++ lastAction s)
+--        -- Set initial hand
+--    ('h':' ':v1:s1:' ':v2:s2:_) ->
+--                 let cs = map toCard [(v1,s1),(v2,s2)]
+--                 in (startHand s cs,
+--                     "Starting hand added: " ++ (show cs))
+--        -- Discard n cards (it can happen)
+--    ('d':' ':n:_) ->
+--                 (discard s (read n :: Int),
+--                  "Discarded " ++ n ++ " cards")
+--        -- Flop
+--    ('c':' ':v1:s1:' ':v2:s2:' ':v3:s3:_) ->
+--                 let cs = map shortHand [(v1,s1),(v2,s2),(v3,s3)]
+--                 in (addCards s cs,
+--                     "Flop added: " ++ (show cs))
+--        -- Add card
+--    ('c':' ':v1:s1:_) ->
+--                 let c = map shortHand [(v1,s1)]
+--                 in (addCards s cs,
+--                     "Card added: " ++ (show c))
+--        -- Player x Folds
+--    ('p':x:'f':_) ->
+--                 (plFolds s (read x :: Int),
+--                  "Player " ++ x ++ " folded")
+--        -- Player x Bets (or Raises, but reporting the bet) by amount
+--    ('p':x:'b':a:_) ->
+--                 (plBets s (read x :: Int) (read a :: Int),
+--                  "Player " ++ x ++ " bet " ++ a)
+--        -- Player x Raises by amount
+--    ('p':x:'r':a_) ->
+--                 (plRaises s (read x :: Int) (read a :: Int),
+--                  "Player " ++ x ++ " raised " ++ a)
+--        -- Otherwise: not a recognised command
+--    _            -> (s, "Command not recognised")
 
 
 
