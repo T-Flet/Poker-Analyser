@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.11 - 14-15/03/2015
+--          0.12 - 15-16/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -119,6 +119,7 @@
 ---- 1 - IMPORTS AND TYPE DECLARATIONS -----------------------------------------
 
 import Data.List (sort, sortBy, groupBy)
+import qualified Data.Map as M (fromList, lookup)
 
 
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
@@ -172,6 +173,14 @@ main = do
 -- SOME LOOP WHICH TAKES A LINE AND FEEDS IT TO A FUNCTION WHICH TAKES A STATE
 -- AND RETURNS A STRING TO PRINT AND A NEW STATE
 
+    -- THIS SECTION IS JUST FOR TESTING
+--    line <- getLine
+--    print $ gameShell line
+--gameShell :: String -> String
+--gameShell cmd = case cmd of
+--        -- Set players number
+--    ('p':'s':' ':n:_) -> "Players number set to " ++ [n]
+--    _                 -> "OTHERWISE"
 
 
 -- THE PREVIOUSLY MENTIONED FUNCTION
@@ -181,7 +190,7 @@ main = do
 --        -- Set players number
 --    ('p':'s':' ':n:_) ->
 --                 (setPlayers s (read n :: Int),
---                  "Players number set to " ++ ps)
+--                  "Players number set to " ++ n)
 --        -- Player x is dealer (the actual player is the first in whichever direction)
 --    ('p':x:'d':_) ->
 --                 (plIsDealer s (read x :: Int),
@@ -228,9 +237,22 @@ main = do
 
 ---- 3 - OTHER FUNCTIONS -------------------------------------------------------
 
+    -- Function to maybe get a card from a pair of value and suit characters
+toCard :: (Char,Char) -> Maybe Card
+toCard (v,s)
+    | Just x <- val , Just y <- sui = Just $ Card x y
+    | otherwise = Nothing
+    where val = M.lookup v $ M.fromList [('2',Two), ('3',Three), ('4',Four),
+                    ('5',Five), ('6',Six), ('7',Seven), ('8',Eight), ('9',Nine),
+                    ('1',Ten), ('j',Jack), ('q',Queen), ('k',King), ('a',Ace)]
+          sui = M.lookup s $ M.fromList [('s',Spades), ('c',Clubs),
+                    ('d',Diamonds), ('h',Hearts)]
+
+
     -- Classic mathematical function
 choose :: Int -> Int -> Int
 n `choose` k = product [k+1..n] `div` product [1..n-k]
+
 
     -- Sort cards by suit first (as in deck order)
 sortBySuit :: [Card] -> [Card]
@@ -243,6 +265,7 @@ sortBySuit cs = sortBy cmpSui cs
                       v2 = value c2
                       s1 = suit  c1
                       s2 = suit  c2
+
 
     -- Return the hand the player actually has
 -- bestHand :: [Card] -> Hand
