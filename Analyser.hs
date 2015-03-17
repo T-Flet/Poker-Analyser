@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.12 - 15-16/03/2015
+--          0.13 - 16-17/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -119,7 +119,7 @@
 ---- 1 - IMPORTS AND TYPE DECLARATIONS -----------------------------------------
 
 import Data.List (sort, sortBy, groupBy)
-import qualified Data.Map as M (fromList, lookup)
+import Data.Char (toLower)
 
 
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
@@ -154,8 +154,11 @@ data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit
 data Player = Player {num :: Int, balance :: Int}
     -- EVENTUALLY INTRODUCE STATISTICS TRACKING IN HERE
 
-data Frame = Frame {playersNum:: Int, dealer :: Int,
-                    table :: [Card], hand :: [Card],
+data Action = Start | Flop | Turn | River | Bet | Raise | Fold
+    -- PERHAPS SPLIT INTO Stage AND Action, WHERE ACTION HAS PLAYER AND AMOUNT FIELDS
+
+data Frame = Frame {action :: Action, playersNum :: Int, dealer :: Int,
+                    table :: [Card], myCards :: [Card],
                     players :: [Player]}
                     -- The actual player is the first (0) in players list
 
@@ -193,15 +196,15 @@ main = do
 --                  "Players number set to " ++ n)
 --        -- Player x is dealer (the actual player is the first in whichever direction)
 --    ('p':x:'d':_) ->
---                 (plIsDealer s (read x :: Int),
+--                 (setDealer s (read x :: Int),
 --                  "Player " ++ x ++ " is dealer")
 --        -- Back one action
 --    ('b':_) ->
---                 (lastState s,
---                  "Revoked last action: " ++ lastAction s)
+--                 (tail s,
+--                  "Revoked last action: " ++ (action $ head s))
 --        -- Set initial hand
 --    ('h':' ':v1:s1:' ':v2:s2:_) ->
---                 let cs = map toCard [(v1,s1),(v2,s2)]
+--                 let cs = map toCard [[v1,s1],[v2,s2]]
 --                 in (startHand s cs,
 --                     "Starting hand added: " ++ (show cs))
 --        -- Discard n cards (it can happen)
@@ -210,12 +213,12 @@ main = do
 --                  "Discarded " ++ n ++ " cards")
 --        -- Flop
 --    ('c':' ':v1:s1:' ':v2:s2:' ':v3:s3:_) ->
---                 let cs = map shortHand [(v1,s1),(v2,s2),(v3,s3)]
+--                 let cs = map shortHand [[v1,s1),[v2,s2],[v3,s3]]
 --                 in (addCards s cs,
 --                     "Flop added: " ++ (show cs))
 --        -- Add card
 --    ('c':' ':v1:s1:_) ->
---                 let c = map shortHand [(v1,s1)]
+--                 let c = map shortHand [[v1,s1]]
 --                 in (addCards s cs,
 --                     "Card added: " ++ (show c))
 --        -- Player x Folds
@@ -237,16 +240,33 @@ main = do
 
 ---- 3 - OTHER FUNCTIONS -------------------------------------------------------
 
+setPlayers :: State -> Int -> State
+setPlayers s@(f:fs) n = nf:s
+    where nf = Frame (action f) n (dealer f) (table f) (myCards f) (players f)
+
+
+setDealer :: State -> Int -> State
+setDealer s@(f:fs) p = nf:s
+    where nf = Frame (action f) (playersNum f) p (table f) (myCards f) (players f)
+
+
+
+
     -- Function to maybe get a card from a pair of value and suit characters
-toCard :: (Char,Char) -> Maybe Card
-toCard (v,s)
-    | Just x <- val , Just y <- sui = Just $ Card x y
+toCard :: [Char] -> Maybe Card
+toCard uVS
+    | vsMatch = Just $ Card val sui
     | otherwise = Nothing
-    where val = M.lookup v $ M.fromList [('2',Two), ('3',Three), ('4',Four),
-                    ('5',Five), ('6',Six), ('7',Seven), ('8',Eight), ('9',Nine),
-                    ('1',Ten), ('j',Jack), ('q',Queen), ('k',King), ('a',Ace)]
-          sui = M.lookup s $ M.fromList [('s',Spades), ('c',Clubs),
-                    ('d',Diamonds), ('h',Hearts)]
+        where vsMatch = v `elem` "234567891jqka" && s `elem` "scdh"
+              [v,s] = map toLower uVS
+              val = case v of
+                    '2' -> Two  ; '3' -> Three ; '4' -> Four  ; '5' -> Five ;
+                    '6' -> Six  ; '7' -> Seven ; '8' -> Eight ; '9' -> Nine ;
+                    '1' -> Ten  ; 'j' -> Jack  ; 'q' -> Queen ; 'k' -> King ;
+                    'a' -> Ace
+              sui = case s of
+                    's' -> Spades   ; 'c' -> Clubs ;
+                    'd' -> Diamonds ; 'h' -> Hearts
 
 
     -- Classic mathematical function
