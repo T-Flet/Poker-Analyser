@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.13 - 16-17/03/2015
+--          0.14 - 17-18/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -23,7 +23,8 @@
 --       00- Testing Data
 --       1 - Imports and Type declarations
 --       2 - Main Functions
---       3 - Other Functions
+--       3 - Shell Functions
+--       4 - Other Functions
 --
 
 ---- 0 - TO DO and TO CONSIDER -------------------------------------------------
@@ -120,6 +121,7 @@
 
 import Data.List (sort, sortBy, groupBy)
 import Data.Char (toLower)
+import Data.Map (lookup)
 
 
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
@@ -154,11 +156,11 @@ data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit
 data Player = Player {num :: Int, balance :: Int}
     -- EVENTUALLY INTRODUCE STATISTICS TRACKING IN HERE
 
-data Action = Start | Flop | Turn | River | Bet | Raise | Fold
+data Action = SetPlayers | SetDealer | Start | Discard | Flop | Turn | River | Bet | Raise | Fold
     -- PERHAPS SPLIT INTO Stage AND Action, WHERE ACTION HAS PLAYER AND AMOUNT FIELDS
 
 data Frame = Frame {action :: Action, playersNum :: Int, dealer :: Int,
-                    table :: [Card], myCards :: [Card],
+                    cardsInDeck :: Int, table :: [Card], myCards :: [Card],
                     players :: [Player]}
                     -- The actual player is the first (0) in players list
 
@@ -213,12 +215,12 @@ main = do
 --                  "Discarded " ++ n ++ " cards")
 --        -- Flop
 --    ('c':' ':v1:s1:' ':v2:s2:' ':v3:s3:_) ->
---                 let cs = map shortHand [[v1,s1),[v2,s2],[v3,s3]]
+--                 let cs = map toCard [[v1,s1],[v2,s2],[v3,s3]]
 --                 in (addCards s cs,
 --                     "Flop added: " ++ (show cs))
 --        -- Add card
 --    ('c':' ':v1:s1:_) ->
---                 let c = map shortHand [[v1,s1]]
+--                 let c = map toCard [[v1,s1]]
 --                 in (addCards s cs,
 --                     "Card added: " ++ (show c))
 --        -- Player x Folds
@@ -238,18 +240,28 @@ main = do
 
 
 
----- 3 - OTHER FUNCTIONS -------------------------------------------------------
+---- 3 - SHELL FUNCTIONS -------------------------------------------------------
 
 setPlayers :: State -> Int -> State
 setPlayers s@(f:fs) n = nf:s
-    where nf = Frame (action f) n (dealer f) (table f) (myCards f) (players f)
+    where nf = Frame SetPlayers n (dealer f) (cardsInDeck f) (table f) (myCards f) (players f)
 
 
 setDealer :: State -> Int -> State
 setDealer s@(f:fs) p = nf:s
-    where nf = Frame (action f) (playersNum f) p (table f) (myCards f) (players f)
+    where nf = Frame SetDealer (playersNum f) p (cardsInDeck f) (table f) (myCards f) (players f)
 
 
+startHand :: State -> [Card] -> State
+startHand s@(f:fs) cs = nf:s
+    where nf = Frame Start (playersNum f) (dealer f) ndcs (table f) cs (players f)
+          ndcs = (cardsInDeck f) - 2 * (playersNum f)
+
+
+discard :: State -> Int -> State
+discard s@(f:fs) n = nf:s
+    where nf = Frame Discard (playersNum f) (dealer f) ndcs (table f) (myCards f) (players f)
+          ndcs = (cardsInDeck f) - n
 
 
     -- Function to maybe get a card from a pair of value and suit characters
@@ -268,6 +280,25 @@ toCard uVS
                     's' -> Spades   ; 'c' -> Clubs ;
                     'd' -> Diamonds ; 'h' -> Hearts
 
+
+    -- FIND A WAY TO STREAMLINE THOSE FUNCTIONS
+    -- ALSO, THINK OF A WAY TO TIE THIS TO THE ACTUAL DATA TYPE
+    -- ALSO, THINK OF POLYMORPHISM AND THE FACT THAT SOME THING SHOULD, PERHAPS NOT BE "READ" BUT JUST PASSED
+--newFrame :: State -> M.Map String String -> State
+--newFrame s@(f:fs) fieldMap = Frame act plN dea dCN tab mCs pls
+--    where act = maybe (action f) (\x -> read x :: Action) $ M.lookup "action" fieldMap
+--          plN = maybe (playersNum f) (\x -> read x :: Int) $ M.lookup "playersNum" fieldMap
+--          dea = maybe (dealer f) (\x -> read x :: Int) $ M.lookup "dealer" fieldMap
+--          dCN = maybe (cardsInDeck f) (\x -> read x :: Int) $ M.lookup "cardsInDeck" fieldMap
+--          tab = maybe (table f) (\x -> read x :: [Card]) $ M.lookup "table" fieldMap
+--          mCs = maybe (myCards f) (\x -> read x :: [Card]) $ M.lookup "myCards" fieldMap
+--          pls = maybe (players f) (\x -> read x :: [Player]) $ M.lookup "players" fieldMap
+--
+--          func (field, reader, key) =
+
+
+
+---- 4 - OTHER FUNCTIONS -------------------------------------------------------
 
     -- Classic mathematical function
 choose :: Int -> Int -> Int
