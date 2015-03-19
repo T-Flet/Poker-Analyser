@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.14 - 17-18/03/2015
+--          0.15 - 18-19/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -28,6 +28,8 @@
 --
 
 ---- 0 - TO DO and TO CONSIDER -------------------------------------------------
+
+-- ADD FRAME NUMBER FIELD
 
 -- GOOD SKETCH OF PROBABILITIES: https://en.wikipedia.org/wiki/Poker_probability_(Texas_hold_%27em)
     -- LOOK AT HAND DOMINATION
@@ -112,8 +114,14 @@
 ---- 00 - TESTING DATA ---------------------------------------------------------
 
 -- let a = [Card King Spades, Card Queen Hearts, Card Jack Clubs]
--- let b = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
+-- let b = [Card Three Spades, Card Seven Hearts, Card Eight Diamonds]
+-- let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
 -- let h = probsToHand (sort a) (reverse $ sort b)
+
+-- let pls = [Player 2 300]
+-- let fr = Frame Discard 4 2 40 a b pls
+-- let fl = [("action", FA Fold), ("dealer", FI 3)]
+-- let ss = newFrame [fr] fl
 
 
 
@@ -121,7 +129,7 @@
 
 import Data.List (sort, sortBy, groupBy)
 import Data.Char (toLower)
-import Data.Map (lookup)
+import qualified Data.Map as M (Map, lookup, fromList)
 
 
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
@@ -153,16 +161,28 @@ data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit
                 deriving (Eq, Ord, Show)
 
 
-data Player = Player {num :: Int, balance :: Int}
+data Player = Player {num :: Int, balance :: Int, onPlate :: Int, status :: Action}
+                deriving (Eq, Ord, Show)
     -- EVENTUALLY INTRODUCE STATISTICS TRACKING IN HERE
 
-data Action = SetPlayers | SetDealer | Start | Discard | Flop | Turn | River | Bet | Raise | Fold
+data Action = SetPlayers | SetDealer | Discard | RoundEnd
+                | Start | Flop | Turn | River | GameEnd
+                | Check | Bet | Raise | Fold | Out
+                deriving (Eq, Ord, Show)
     -- PERHAPS SPLIT INTO Stage AND Action, WHERE ACTION HAS PLAYER AND AMOUNT FIELDS
 
 data Frame = Frame {action :: Action, playersNum :: Int, dealer :: Int,
                     cardsInDeck :: Int, table :: [Card], myCards :: [Card],
-                    players :: [Player]}
+                    plate :: Int, players :: [Player]}
+                deriving (Eq, Show)
                     -- The actual player is the first (0) in players list
+
+data FrameField = FA Action | FI Int | FC [Card] | FP [Player]
+                deriving (Eq, Show)
+toA (FA x) = x
+toI (FI x) = x
+toC (FC x) = x
+toP (FP x) = x
 
 type State = [Frame]
 
@@ -172,99 +192,160 @@ type State = [Frame]
 
 main = do
     line <- getLine
-    let myHand = read line :: (Value, Suit)
-    print $ Card (fst myHand) (snd myHand)
+    print . snd $ gameShell [] line
 
 -- SOME LOOP WHICH TAKES A LINE AND FEEDS IT TO A FUNCTION WHICH TAKES A STATE
 -- AND RETURNS A STRING TO PRINT AND A NEW STATE
 
-    -- THIS SECTION IS JUST FOR TESTING
---    line <- getLine
---    print $ gameShell line
---gameShell :: String -> String
---gameShell cmd = case cmd of
---        -- Set players number
---    ('p':'s':' ':n:_) -> "Players number set to " ++ [n]
---    _                 -> "OTHERWISE"
 
 
--- THE PREVIOUSLY MENTIONED FUNCTION
--- PERHAPS LATER MADE AS REGEXES (IF MAKING IT SAFER IS DIFFICULT IN THIS WAY)
---gameShell :: State -> String -> (State,String)
---gameShell s cmd = case cmd of
---        -- Set players number
---    ('p':'s':' ':n:_) ->
---                 (setPlayers s (read n :: Int),
---                  "Players number set to " ++ n)
---        -- Player x is dealer (the actual player is the first in whichever direction)
---    ('p':x:'d':_) ->
---                 (setDealer s (read x :: Int),
---                  "Player " ++ x ++ " is dealer")
---        -- Back one action
---    ('b':_) ->
---                 (tail s,
---                  "Revoked last action: " ++ (action $ head s))
---        -- Set initial hand
---    ('h':' ':v1:s1:' ':v2:s2:_) ->
---                 let cs = map toCard [[v1,s1],[v2,s2]]
---                 in (startHand s cs,
---                     "Starting hand added: " ++ (show cs))
---        -- Discard n cards (it can happen)
---    ('d':' ':n:_) ->
---                 (discard s (read n :: Int),
---                  "Discarded " ++ n ++ " cards")
---        -- Flop
---    ('c':' ':v1:s1:' ':v2:s2:' ':v3:s3:_) ->
---                 let cs = map toCard [[v1,s1],[v2,s2],[v3,s3]]
---                 in (addCards s cs,
---                     "Flop added: " ++ (show cs))
---        -- Add card
---    ('c':' ':v1:s1:_) ->
---                 let c = map toCard [[v1,s1]]
---                 in (addCards s cs,
---                     "Card added: " ++ (show c))
---        -- Player x Folds
---    ('p':x:'f':_) ->
---                 (plFolds s (read x :: Int),
---                  "Player " ++ x ++ " folded")
---        -- Player x Bets (or Raises, but reporting the bet) by amount
---    ('p':x:'b':a:_) ->
---                 (plBets s (read x :: Int) (read a :: Int),
---                  "Player " ++ x ++ " bet " ++ a)
---        -- Player x Raises by amount
---    ('p':x:'r':a_) ->
---                 (plRaises s (read x :: Int) (read a :: Int),
---                  "Player " ++ x ++ " raised " ++ a)
---        -- Otherwise: not a recognised command
---    _            -> (s, "Command not recognised")
+    -- PERHAPS LATER MAKE WITH REGEXES (IF MAKING IT SAFER IS DIFFICULT IN THIS WAY)
+    -- TIDY UP:
+    --  COULD INCLUDE THE TUPLE IN THE SINGLE FUNCTIONS INSTEAD OF HERE
+    --  COULD USE A LET OR WHERE CLAUSE TO MAKE THE CHARS STRINGS INSTEAD OF DOING, FOR EXAMPLE, [x]
+gameShell :: State -> String -> (State,String)
+gameShell s cmd = case cmd of
+    -- Player related commands start with p
+        -- Set players number
+    ('p':'n':' ':n:_) ->
+                (setPlayers s (read [n] :: Int),
+                    "Players number set to " ++ [n])
+        -- Player x is dealer (the actual player is the first in whichever direction)
+    ('p':'d':' ':x:_) ->
+                (setDealer s (read [x] :: Int),
+                    "Player " ++ [x] ++ " is dealer")
+        -- Player x Folds
+    ('p':'f':x:_) ->
+                (plFolds s (read [x] :: Int),
+                    "Player " ++ [x] ++ " folded")
+        -- Player x Bets (or Raises, but reporting the bet) by amount
+    ('p':'b':x:' ':a:_) ->
+                (plBets s Bet (read [x] :: Int) (read [a] :: Int),
+                    "Player " ++ [x] ++ " bet " ++ [a])
+        -- Player x Raises by amount
+    ('p':'r':x:' ':a:_) ->
+                (plBets s Raise (read [x] :: Int) (read [a] :: Int),
+                    "Player " ++ [x] ++ " raised " ++ [a])
+
+        -- Back one action
+    ('b':_) ->
+                (tail s,
+                    "Revoked last action: " ++ (show . action $ head s))
+
+    -- Card related commands start with p
+        -- Discard n cards (it can happen)
+    ('c':'d':' ':n:_) ->
+                (discard s (read [n] :: Int),
+                    "Discarded " ++ [n] ++ " cards")
+        -- Set initial hand
+    ('c':'i':' ':v1:s1:' ':v2:s2:_) ->
+                cardHandler s Start [[v1,s1],[v2,s2]]
+        -- Flop
+    ('c':'f':' ':v1:s1:' ':v2:s2:' ':v3:s3:_) ->
+                cardHandler s Flop  [[v1,s1],[v2,s2],[v3,s3]]
+        -- Turn
+    ('c':'t':' ':v1:s1:_) ->
+                cardHandler s Turn  [[v1,s1]]
+        -- River
+    ('c':'r':' ':v1:s1:_) ->
+                cardHandler s River [[v1,s1]]
+
+        -- Otherwise: not a recognised command
+    _            -> (s, "Command not recognised")
 
 
 
 ---- 3 - SHELL FUNCTIONS -------------------------------------------------------
 
+    -- Set the number of players
 setPlayers :: State -> Int -> State
-setPlayers s@(f:fs) n = nf:s
-    where nf = Frame SetPlayers n (dealer f) (cardsInDeck f) (table f) (myCards f) (players f)
+setPlayers s n = newFrame s [("action", FA SetPlayers), ("playersNum", FI n)]
 
 
+    -- Set the player x (x after the actual player) to be the dealer
 setDealer :: State -> Int -> State
-setDealer s@(f:fs) p = nf:s
-    where nf = Frame SetDealer (playersNum f) p (cardsInDeck f) (table f) (myCards f) (players f)
+setDealer s p = newFrame s [("action", FA SetDealer), ("dealer", FI p)]
 
 
+    -- Give out two cards per player
 startHand :: State -> [Card] -> State
-startHand s@(f:fs) cs = nf:s
-    where nf = Frame Start (playersNum f) (dealer f) ndcs (table f) cs (players f)
-          ndcs = (cardsInDeck f) - 2 * (playersNum f)
+startHand s@(f:_) cs = newFrame s [("action", FA Start), ("myCards", FC cs), ("cardsInDeck", FI ndcs)]
+    where ndcs = (cardsInDeck f) - 2 * (playersNum f)
 
 
+    -- Discard n cards (for some reason)
 discard :: State -> Int -> State
-discard s@(f:fs) n = nf:s
-    where nf = Frame Discard (playersNum f) (dealer f) ndcs (table f) (myCards f) (players f)
-          ndcs = (cardsInDeck f) - n
+discard s@(f:_) n = newFrame s [("action", FA Discard), ("cardsInDeck", FI ndcs)]
+    where ndcs = (cardsInDeck f) - n
 
 
-    -- Function to maybe get a card from a pair of value and suit characters
+    -- ADD THE FACT THAT CARDS ARE DISCARDED!!!
+    -- Add some cards to the table (Flop, Turn, River)
+addCards :: State -> Action -> [Card] -> State
+addCards s@(f:_) act cs = newFrame s [("action", FA act), ("cardsInDeck", FI ndcs), ("table", FC ntab)]
+    where ndcs = (cardsInDeck f) - (length cs)
+          ntab = cs ++ (table f)
+
+
+    -- Player x Folds
+plFolds :: State -> Int -> State
+plFolds s@(f:_) x = newFrame s [("action", FA Fold), ("players", FP npls)]
+    where npls = map plStatus (players f)
+          plStatus pl
+            | num pl == x = Player x (balance pl) (onPlate pl) Fold
+            | otherwise   = pl
+
+
+    -- INTRODUCE NEGATIVE BALANCE CHECKS SOMEWHERE
+    -- ALSO, CHECK THAT A Bet IS >= THE PREVIOUS ONE
+    -- Player x bets or raises by amount a
+plBets :: State -> Action -> Int -> Int -> State
+plBets s@(f:_) act x a = newFrame s [("action", FA act), ("players", FP npls)]
+    where npls = map plStatus (players f)
+          plStatus pl
+            | num pl == x && act == Bet   = Player x nBal nPlt act
+            | num pl == x && act == Raise = Player x (nBal-pPPlt) (nPlt+pPPlt) act
+            | otherwise                   = pl
+                where nBal = ((balance pl) - a)
+                      nPlt = ((onPlate pl) + a)
+
+                      pPPlt = onPlate . head . filter ((== (x-1) `mod` (playersNum f)) . num) $ players f
+
+
+    -- Add a new Frame to the State by providing only the fields which change
+    -- with respect to the previous one
+newFrame :: State -> [(String, FrameField)] -> State
+newFrame s@(f:fs) fieldList = (Frame act plN dea dCN tab mCs plt pls):s
+    where act = newField action      toA "action"
+          plN = newField playersNum  toI "playersNum"
+          dea = newField dealer      toI "dealer"
+          dCN = newField cardsInDeck toI "cardsInDeck"
+          tab = newField table       toC "table"
+          mCs = newField myCards     toC "myCards"
+          plt = newField plate       toI "plate"
+          pls = newField players     toP "players"
+
+          newField field extractor key =
+                maybe (field f) extractor . M.lookup key $ M.fromList fieldList
+
+
+    -- Take cards in shorthand as input, and if correct, execute a Start, Flop,
+    -- Turn or River
+cardHandler :: State -> Action -> [String] -> (State,String)
+cardHandler s act sCs = maybe (s, "Cards have been mistyped") actFunc $ mCs
+    where mCs = sequence $ map toCard sCs
+          actFunc = case act of
+                        Start -> (\cs -> (startHand s cs,
+                                    "Starting hand added: " ++ (show cs)) )
+                        Flop  -> (\cs -> (addCards s Flop cs,
+                                    "Flop added: " ++ (show cs)) )
+                        Turn  -> (\cs -> (addCards s Turn cs,
+                                    "Card added: " ++ (show cs)) )
+                        River -> (\cs -> (addCards s River cs,
+                                    "Card added: " ++ (show cs)) )
+
+
+    -- Maybe get a card from a pair of value and suit characters
 toCard :: [Char] -> Maybe Card
 toCard uVS
     | vsMatch = Just $ Card val sui
@@ -279,22 +360,6 @@ toCard uVS
               sui = case s of
                     's' -> Spades   ; 'c' -> Clubs ;
                     'd' -> Diamonds ; 'h' -> Hearts
-
-
-    -- FIND A WAY TO STREAMLINE THOSE FUNCTIONS
-    -- ALSO, THINK OF A WAY TO TIE THIS TO THE ACTUAL DATA TYPE
-    -- ALSO, THINK OF POLYMORPHISM AND THE FACT THAT SOME THING SHOULD, PERHAPS NOT BE "READ" BUT JUST PASSED
---newFrame :: State -> M.Map String String -> State
---newFrame s@(f:fs) fieldMap = Frame act plN dea dCN tab mCs pls
---    where act = maybe (action f) (\x -> read x :: Action) $ M.lookup "action" fieldMap
---          plN = maybe (playersNum f) (\x -> read x :: Int) $ M.lookup "playersNum" fieldMap
---          dea = maybe (dealer f) (\x -> read x :: Int) $ M.lookup "dealer" fieldMap
---          dCN = maybe (cardsInDeck f) (\x -> read x :: Int) $ M.lookup "cardsInDeck" fieldMap
---          tab = maybe (table f) (\x -> read x :: [Card]) $ M.lookup "table" fieldMap
---          mCs = maybe (myCards f) (\x -> read x :: [Card]) $ M.lookup "myCards" fieldMap
---          pls = maybe (players f) (\x -> read x :: [Player]) $ M.lookup "players" fieldMap
---
---          func (field, reader, key) =
 
 
 
