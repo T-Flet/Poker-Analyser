@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.15 - 18-19/03/2015
+--          0.16 - 19-20/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -23,8 +23,9 @@
 --       00- Testing Data
 --       1 - Imports and Type declarations
 --       2 - Main Functions
---       3 - Shell Functions
---       4 - Other Functions
+--       3 - Shell Direct Functions
+--       4 - Shell Data Manipulation Functions
+--       5 - Probability Functions
 --
 
 ---- 0 - TO DO and TO CONSIDER -------------------------------------------------
@@ -127,7 +128,7 @@
 
 ---- 1 - IMPORTS AND TYPE DECLARATIONS -----------------------------------------
 
-import Data.List (sort, sortBy, groupBy)
+import Data.List (sort, sortBy, groupBy, maximumBy)
 import Data.Char (toLower)
 import qualified Data.Map as M (Map, lookup, fromList)
 
@@ -165,7 +166,7 @@ data Player = Player {num :: Int, balance :: Int, onPlate :: Int, status :: Acti
                 deriving (Eq, Ord, Show)
     -- EVENTUALLY INTRODUCE STATISTICS TRACKING IN HERE
 
-data Action = SetPlayers | SetDealer | Discard | RoundEnd
+data Action = GameStart | SetPlayers | SetDealer | Discard | RoundEnd
                 | Start | Flop | Turn | River | GameEnd
                 | Check | Bet | Raise | Fold | Out
                 deriving (Eq, Ord, Show)
@@ -191,41 +192,53 @@ type State = [Frame]
 ---- 2 - MAIN FUNCTIONS --------------------------------------------------------
 
 main = do
-    line <- getLine
-    print . snd $ gameShell [] line
+    print "Analyser Shell"
+    gameShell initialState
 
--- SOME LOOP WHICH TAKES A LINE AND FEEDS IT TO A FUNCTION WHICH TAKES A STATE
--- AND RETURNS A STRING TO PRINT AND A NEW STATE
 
+
+    -- PERHAPS THIS CAN BE DONE WITH foldM WITH THE STATE AS THE ACCUMULATOR
+gameShell :: State -> IO ()
+gameShell state = do
+    cmd <- getLine
+    if cmd == "q"
+        then do
+            putStrLn "Game Over"
+            print $ "The players' balances are " ++ (show $ balances state)
+            print $ "Player " ++ (show $ inTheLead state) ++ " wins"
+        else do
+            let (newState, msg) = shellCommand state cmd
+            putStrLn msg
+            gameShell newState
 
 
     -- PERHAPS LATER MAKE WITH REGEXES (IF MAKING IT SAFER IS DIFFICULT IN THIS WAY)
     -- TIDY UP:
     --  COULD INCLUDE THE TUPLE IN THE SINGLE FUNCTIONS INSTEAD OF HERE
     --  COULD USE A LET OR WHERE CLAUSE TO MAKE THE CHARS STRINGS INSTEAD OF DOING, FOR EXAMPLE, [x]
-gameShell :: State -> String -> (State,String)
-gameShell s cmd = case cmd of
+shellCommand :: State -> String -> (State,String)
+shellCommand s cmd = case cmd of
     -- Player related commands start with p
         -- Set players number
     ('p':'n':' ':n:_) ->
                 (setPlayers s (read [n] :: Int),
                     "Players number set to " ++ [n])
         -- Player x is dealer (the actual player is the first in whichever direction)
-    ('p':'d':' ':x:_) ->
+    ('p':x:'d':_) ->
                 (setDealer s (read [x] :: Int),
                     "Player " ++ [x] ++ " is dealer")
         -- Player x Folds
-    ('p':'f':x:_) ->
+    ('p':x:'f':_) ->
                 (plFolds s (read [x] :: Int),
                     "Player " ++ [x] ++ " folded")
         -- Player x Bets (or Raises, but reporting the bet) by amount
-    ('p':'b':x:' ':a:_) ->
-                (plBets s Bet (read [x] :: Int) (read [a] :: Int),
-                    "Player " ++ [x] ++ " bet " ++ [a])
+    ('p':x:'b':' ':a) ->
+                (plBets s Bet (read [x] :: Int) (read a :: Int),
+                    "Player " ++ [x] ++ " bet " ++ a)
         -- Player x Raises by amount
-    ('p':'r':x:' ':a:_) ->
-                (plBets s Raise (read [x] :: Int) (read [a] :: Int),
-                    "Player " ++ [x] ++ " raised " ++ [a])
+    ('p':x:'r':' ':a) ->
+                (plBets s Raise (read [x] :: Int) (read a :: Int),
+                    "Player " ++ [x] ++ " raised " ++ a)
 
         -- Back one action
     ('b':_) ->
@@ -250,12 +263,34 @@ gameShell s cmd = case cmd of
     ('c':'r':' ':v1:s1:_) ->
                 cardHandler s River [[v1,s1]]
 
+--    ('h':_) ->
+--                (s, help)
+
+-- COMMAND TO PRINT THE CURRENT FRAME IN HUMAN READABLE FORMAT OR SOMETHING
+
         -- Otherwise: not a recognised command
     _            -> (s, "Command not recognised")
 
 
 
----- 3 - SHELL FUNCTIONS -------------------------------------------------------
+---- 3 - SHELL DIRECT FUNCTIONS ------------------------------------------------
+
+    -- SOME BUG IS PRESENT HERE
+    -- Show players' balances
+balances :: State -> [(Int,Int)]
+balances (f:_) = foldr extractBal [] $ players f
+    where extractBal pl bs = (num pl, balance pl):bs
+
+
+    -- Determine the player currently in the lead
+inTheLead :: State -> Int
+inTheLead = fst . maximumBy cmpBal . balances
+    where cmpBal x y = compare (snd x) (snd y)
+
+
+    -- Starting state
+initialState :: State
+initialState = [Frame GameStart 0 0 52 [] [] 0 []]
 
     -- Set the number of players
 setPlayers :: State -> Int -> State
@@ -279,12 +314,14 @@ discard s@(f:_) n = newFrame s [("action", FA Discard), ("cardsInDeck", FI ndcs)
     where ndcs = (cardsInDeck f) - n
 
 
-    -- ADD THE FACT THAT CARDS ARE DISCARDED!!!
     -- Add some cards to the table (Flop, Turn, River)
 addCards :: State -> Action -> [Card] -> State
 addCards s@(f:_) act cs = newFrame s [("action", FA act), ("cardsInDeck", FI ndcs), ("table", FC ntab)]
-    where ndcs = (cardsInDeck f) - (length cs)
+    where ndcs = (cardsInDeck f) - (length cs) - discdCs
           ntab = cs ++ (table f)
+          discdCs
+            | act == Flop = 3
+            | otherwise   = 1
 
 
     -- Player x Folds
@@ -311,6 +348,9 @@ plBets s@(f:_) act x a = newFrame s [("action", FA act), ("players", FP npls)]
 
                       pPPlt = onPlate . head . filter ((== (x-1) `mod` (playersNum f)) . num) $ players f
 
+
+
+---- 4 - SHELL DATA MANIPULATION FUNCTIONS -------------------------------------
 
     -- Add a new Frame to the State by providing only the fields which change
     -- with respect to the previous one
@@ -363,7 +403,7 @@ toCard uVS
 
 
 
----- 4 - OTHER FUNCTIONS -------------------------------------------------------
+---- 5 - PROBABILITY FUNCTIONS -------------------------------------------------
 
     -- Classic mathematical function
 choose :: Int -> Int -> Int
