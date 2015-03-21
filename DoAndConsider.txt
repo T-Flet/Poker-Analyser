@@ -1,0 +1,122 @@
+---- Poker Analyser Do and Consider File
+--
+--      Author:
+--          Dr-Lord
+--
+--      Version:
+--          0.1 - 20-21/03/2015
+--
+--      Description:
+--          Poker analysing shell.
+--          This package contains all the things I currently have to do or
+--          am considering doing. It also contains various notes and testing
+--          data for the program.
+--
+--   Sections:
+--       1 - To Do
+--       2 - To Consider
+--       3 - Notes
+--       4 - Testing Data
+--
+
+
+---- 1 - TO DO -----------------------------------------------------------------
+
+    GOOD SKETCH OF PROBABILITIES: https://en.wikipedia.org/wiki/Poker_probability_(Texas_hold_%27em)
+
+    LOOK AT HAND DOMINATION
+
+
+
+---- 2 - TO CONSIDER -----------------------------------------------------------
+
+    ADD FRAME NUMBER FIELD
+
+    COULD JUST BRUTE FORCE ALL POSSIBLE HANDS, SORT THEM, RANK THEM AND SAVE THE
+    RESULT AS A DATA STRUCTURE TO IMPORT.
+        OR DO IT SLIGHTLY MORE SMARTLY, BY GROUPING THEM.
+
+        START BY DOING IT FOR STARTING PAIRS. VERY IMPORTANT. DO IT!!!!!!!!
+
+    IN GENERAL: NEED TO IMPLEMENT CONDITIONAL PROBABILITIES (A|B) IN ORDER TO
+    CATER FOR THE FACT THAT SOME CARDS THAT ARE NEEDED FOR A HAND COULD HAVE
+    ALREADY BEEN EXTRACTED AND BE IN OTHER PLAYERS' HANDS.
+
+    EVEN IF THE INCREMENTAL PROBABILITY ENDS UP NOT BEING IMPLEMENTED, MAKE IT
+    SO THAT EVERYTHING IS FIRST CALCULATED FOR THE TABLE SO THAT PROBABILITIES
+    FOR ALL PLAYERS ARE KNOWN, AND THEN APPLY IT TO THE SPECIFIC PLAYER'S HAND
+
+    ADD AN "OR" CLAUSE IN THE need FIELD OF Prob
+
+    CONSIDER REMOVING THE HandType VALUE FROM Hand AND Prob, AND JUST MAKE
+    Data.MapS (DICTIONARIES) OF ( (HandType,Prob) AND (HandType,Hand) ) OR
+    (HandType,Either Prob Hand)
+
+    REALLY THINK ABOUT INCREMENTAL VS COMPREHENSIVE PROBABILITY DETERMINATION
+
+    PERHAPS GROUP straightProb AND highCardProb TOGETHER
+
+    INTRODUCE better (OR SOMETHING SIMILAR) FIELD IN Prob, REPRESENTING THE
+    SMALLEST CARD REQUIRED TO GET A BETTER HAND THAN THE PRESENT.
+    IT IS DIFFERENT FROM THE need FIELD, AND IT SHOULD WORK WITH IT
+
+    INTRODUCE quality FIELD IN Prob, REPRESENTING HOW GOOD A HandType IT IS
+    AMONG ALL POSSIBLE SAME HandTypes
+        PERHAPS IT SHOULD BE IN Hand INSTEAD?
+            AND A SAME TYPE FIELD SUCH AS "BEST POSSIBLE" COULD BE IN Prob
+        REGARDLESS:
+            NEED A SET OF BIJECTIONS (ONE PER HandType)
+            F: HandType x |-> [0..numberOfAllPossibleShuchHandTypes-1]
+                OR PERHAPS FROM 1 TO (NOT -1)
+                E.G. : HighCard -> [0..13-1]
+
+    FUNCTION whatProb WHICH IS GIVEN THE PRESENT CARDS AND STUFF LIKE
+    Either Value Suit OR [Card] AND RETURNS THE PROBABILITY OF GETTING SUCH A
+    SET FROM THE PRESENT ONES
+        PERHAPS THE need FIELD IN Prob SHOULD BE OF THE TYPE OF THAT STUFF
+        OR Prob SHOULD ALSO HAVE A cards FIELD LIKE Hand.
+
+    STRUCTURING CAN BE THE FOLLOWING:
+     ONE FUNCTION TAKES THE TABLE AND RETURNS Prob OF ALL HandtypeS;
+     THEN THE PLAYER'S HAND IS TAKEN IN AND MAPPED OVER THE PROBABILITIES;
+     EITHER STOP AT THE FIRST 100% OR DO THEM ALL (OR BE LAZY AFTER THE FIRST ONE)
+
+    MAKE ALL THESE FUNCTIONS ASSUME THE PREVIOUS ONE HAS RUN?
+    MAKE THEM WORK BY COUNTING THE CARDS THAT ARE NOT "OUT"?
+    AND PERHAPS ALL POSSIBLE OTHER PLAYERS' HANDS?
+
+
+    DISTINCTIVE PROPERTY OF THIS PROJECT WILL BE THE QUALITY OF HANDS:
+    FROM THE SET OF ALL POSSIBLE 5 CARDS (52C5), THE 10 PARTITIONS IN DIFFERENT
+    HANDTYPES WILL BE IDENTIFIED AND INDIVIDUALLY SORTED BY CREATING BIJECTIONS
+    (IN FACT SIMILAR TO A fromEnum) FROM EACH OF THEM TO INTEGERS FROM 0 TO THE
+    NUMBER OF ALL POSSIBLE SUCH HANDS IN ORDER.
+
+
+
+---- 3 - NOTES -----------------------------------------------------------------
+
+    THERE WILL BE MANY HANDS WHICH WILL BE IN MORE THAN ONE HANDTYPE
+
+    THE ONLY HANDS WHICH WILL NEED TO BE CALCULATED EACH TIME ARE
+    THE ONES THAT WOULD BEAT THE PLAYER'S OWN.
+
+    THERE CAN BE A CRUDER VERSION OF QUALITY OF HANDS: BY NOT SORTING ALL
+    SINGLE POSSIBLE ONES BUT BY GROUPING THEM BY KINDS.
+    E.G. SORT FULLHOUSES BY WHAT THE TRIS IS OF AND WHAT THE PAIR IS OF.
+
+
+
+---- 4 - TESTING DATA ----------------------------------------------------------
+
+let a = [Card King Spades, Card Queen Hearts, Card Jack Clubs]
+let b = [Card Three Spades, Card Seven Hearts, Card Eight Diamonds]
+
+let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
+let h = probsToHand (sort a) (reverse $ sort b)
+
+let pls = [Player 1 50 10 Fold, Player 2 300 30 Bet, Player 3 200 50 Raise]
+let fr = Frame Discard 4 2 40 a b 0 pls
+let fl = [("action", FA Fold), ("dealer", FI 3)]
+let ss = newFrame [fr] fl
+let ss = [Frame {action = Fold, playersNum = 4, dealer = 3, cardsInDeck = 40, table = [Card {value = King, suit = Spades},Card {value = Queen, suit = Hearts},Card {value = Jack, suit = Clubs}], myCards = [Card {value = Three, suit = Spades},Card {value = Seven, suit = Hearts},Card {value = Eight, suit = Diamonds}], plate = 0, players = [Player {num = 1, balance = 50, onPlate = 10, status = Fold},Player {num = 2, balance = 300, onPlate = 30, status = Bet},Player {num = 3, balance = 200, onPlate = 50, status = Raise}]},Frame {action = Discard, playersNum = 4, dealer = 2, cardsInDeck = 40, table = [Card {value = King, suit = Spades},Card {value = Queen, suit = Hearts},Card {value = Jack, suit = Clubs}], myCards = [Card {value = Three, suit = Spades},Card {value = Seven, suit = Hearts},Card {value = Eight, suit = Diamonds}], plate = 0, players = [Player {num = 1, balance = 50, onPlate = 10, status = Fold},Player {num = 2, balance = 300, onPlate = 30, status = Bet},Player {num = 3, balance = 200, onPlate = 50, status = Raise}]}]
