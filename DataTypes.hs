@@ -109,7 +109,7 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 ---- 3 - STATE RELATED DATA TYPES ----------------------------------------------
 
 data Action = GameStart | SetPlayers | SetDealer | Discard | RoundEnd
-                | Start | Flop | Turn | River | GameEnd
+                | StartHand | Flop | Turn | River | GameEnd
                 | Check | Bet | Raise | Fold | Out
                 deriving (Eq, Ord, Show)
     -- PERHAPS SPLIT INTO Stage AND Action, WHERE ACTION HAS PLAYER AND AMOUNT FIELDS

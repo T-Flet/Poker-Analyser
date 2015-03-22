@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.16 - 19-20/03/2015
+--          0.17 - 21-22/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -33,7 +33,7 @@ import DataTypes
 import Probabilities
 
 import Data.List (sort, sortBy, groupBy, maximumBy)
-import qualified Data.Map as M (Map, lookup, fromList)
+import qualified Data.Map as M (lookup, fromList)
 
 
 
@@ -68,9 +68,9 @@ shellCommand :: State -> String -> (State,String)
 shellCommand s cmd = case cmd of
     -- Player related commands start with p
         -- Set players number
-    ('p':'n':' ':n:_) ->
-                (setPlayers s (read [n] :: Int),
-                    "Players number set to " ++ [n])
+    ('p':'n':' ':n) ->
+                (setPlayers s (read n :: Int),
+                    "Players number set to " ++ n)
         -- Player x is dealer (the actual player is the first in whichever direction)
     ('p':x:'d':_) ->
                 (setDealer s (read [x] :: Int),
@@ -89,18 +89,18 @@ shellCommand s cmd = case cmd of
                     "Player " ++ [x] ++ " raised " ++ a)
 
         -- Back one action
-    ('b':_) ->
+    "b" ->
                 (tail s,
                     "Revoked last action: " ++ (show . action $ head s))
 
     -- Card related commands start with p
         -- Discard n cards (it can happen)
-    ('c':'d':' ':n:_) ->
-                (discard s (read [n] :: Int),
-                    "Discarded " ++ [n] ++ " cards")
+    ('c':'d':' ':n) ->
+                (discard s (read n :: Int),
+                    "Discarded " ++ n ++ " cards")
         -- Set initial hand
     ('c':'i':' ':v1:s1:' ':v2:s2:_) ->
-                cardHandler s Start [[v1,s1],[v2,s2]]
+                cardHandler s StartHand [[v1,s1],[v2,s2]]
         -- Flop
     ('c':'f':' ':v1:s1:' ':v2:s2:' ':v3:s3:_) ->
                 cardHandler s Flop  [[v1,s1],[v2,s2],[v3,s3]]
@@ -111,6 +111,24 @@ shellCommand s cmd = case cmd of
     ('c':'r':' ':v1:s1:_) ->
                 cardHandler s River [[v1,s1]]
 
+    -- Frame related commands begin with f
+        -- Show any field from current frame
+    ('f':'f':' ':field) ->
+                fieldHandler s field
+
+        -- Show the full frame fields
+    "fff" ->
+                (s, show $ head s)
+
+        -- Show players' balances
+    "fb" ->
+                (s, show $ balances s)
+
+        -- Number of actions or frames
+    "fa" ->
+                (s, "Frames: " ++ (show $ length s))
+
+        -- MAKE A COMMAND TO DISPLAY THE NUMBER OF ROUNDS (CALCULATE OR STORE IT)
 --    ('h':_) ->
 --                (s, help)
 
@@ -141,6 +159,7 @@ inTheLead = fst . maximumBy cmpBal . balances
 initialState :: State
 initialState = [Frame GameStart 0 0 52 [] [] 0 []]
 
+
     -- Set the number of players
 setPlayers :: State -> Int -> State
 setPlayers s n = newFrame s [("action", FA SetPlayers), ("playersNum", FI n)]
@@ -153,7 +172,7 @@ setDealer s p = newFrame s [("action", FA SetDealer), ("dealer", FI p)]
 
     -- Give out two cards per player
 startHand :: State -> [Card] -> State
-startHand s@(f:_) cs = newFrame s [("action", FA Start), ("myCards", FC cs), ("cardsInDeck", FI ndcs)]
+startHand s@(f:_) cs = newFrame s [("action", FA StartHand), ("myCards", FC cs), ("cardsInDeck", FI ndcs)]
     where ndcs = (cardsInDeck f) - 2 * (playersNum f)
 
 
@@ -204,7 +223,7 @@ plBets s@(f:_) act x a = newFrame s [("action", FA act), ("players", FP npls)]
     -- Add a new Frame to the State by providing only the fields which change
     -- with respect to the previous one
 newFrame :: State -> [(String, FrameField)] -> State
-newFrame s@(f:fs) fieldList = (Frame act plN dea dCN tab mCs plt pls):s
+newFrame s@(f:_) fieldList = (Frame act plN dea dCN tab mCs plt pls):s
     where act = newField action      toA "action"
           plN = newField playersNum  toI "playersNum"
           dea = newField dealer      toI "dealer"
@@ -214,24 +233,43 @@ newFrame s@(f:fs) fieldList = (Frame act plN dea dCN tab mCs plt pls):s
           plt = newField plate       toI "plate"
           pls = newField players     toP "players"
 
+          newField :: (Frame -> a) -> (FrameField -> a) -> String -> a
           newField field extractor key =
                 maybe (field f) extractor . M.lookup key $ M.fromList fieldList
 
 
-    -- Take cards in shorthand as input, and if correct, execute a Start, Flop,
+    -- Take cards in shorthand as input, and if correct, execute a StartHand, Flop,
     -- Turn or River
 cardHandler :: State -> Action -> [String] -> (State,String)
-cardHandler s act sCs = maybe (s, "Cards have been mistyped") actFunc $ mCs
+cardHandler s act sCs = maybe (s, "Cards have been mistyped") actFunc mCs
     where mCs = sequence $ map toCard sCs
           actFunc = case act of
-                        Start -> (\cs -> (startHand s cs,
+                        StartHand -> (\cs -> (startHand s cs,
                                     "Starting hand added: " ++ (show cs)) )
                         Flop  -> (\cs -> (addCards s Flop cs,
                                     "Flop added: " ++ (show cs)) )
                         Turn  -> (\cs -> (addCards s Turn cs,
-                                    "Card added: " ++ (show cs)) )
+                                    "Turn added: " ++ (show cs)) )
                         River -> (\cs -> (addCards s River cs,
-                                    "Card added: " ++ (show cs)) )
+                                    "River added: " ++ (show cs)) )
+
+
+    -- Read out any field of the current Frame
+fieldHandler :: State -> String -> (State,String)
+fieldHandler s@(f:_) funcStr = (s, msg)
+    where msg = case funcStr of
+            "action"      -> val action
+            "playersNum"  -> val playersNum
+            "dealer"      -> val dealer
+            "cardsInDeck" -> val cardsInDeck
+            "table"       -> val table
+            "myCards"     -> val myCards
+            "plate"       -> val plate
+            "players"     -> val players
+            _             -> "Field not recognised"
+
+          val :: Show a => (Frame -> a) -> String
+          val func = show $ func f
 
 
 

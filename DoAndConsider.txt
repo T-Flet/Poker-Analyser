@@ -26,6 +26,10 @@
 
     LOOK AT HAND DOMINATION
 
+    MAKE A DEFAULT maybe FALLBACK FUNCTION FOR EACH COMMANS (LOOK AT toCard)
+
+    MAKE A NICER Show INSTANCE FOR Frame AND OTHER STUFF THAN THE DERIVED ONES
+
 
 
 ---- 2 - TO CONSIDER -----------------------------------------------------------
