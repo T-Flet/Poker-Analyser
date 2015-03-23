@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.1 - 20-21/03/2015
+--          0.2 - 22-23/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -108,11 +108,11 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 
 ---- 3 - STATE RELATED DATA TYPES ----------------------------------------------
 
-data Action = GameStart | SetPlayers | SetDealer | Discard | RoundEnd
-                | StartHand | Flop | Turn | River | GameEnd
-                | Check | Bet | Raise | Fold | Out
+data Action = GameStart | SetPlayers Int | SetDealer Int | Discard Int
+                | RoundStart | StartHand [Card] | Flop [Card] | Turn [Card] | River [Card]
+                | Check Int | Bet Int Int | Raise Int Int | Fold Int | Out Int
+                | RoundEnd | GameEnd Int
                 deriving (Eq, Ord, Show)
-    -- PERHAPS SPLIT INTO Stage AND Action, WHERE ACTION HAS PLAYER AND AMOUNT FIELDS
 
 data Player = Player {num :: Int, balance :: Int, onPlate :: Int, status :: Action}
                 deriving (Eq, Ord, Show)
@@ -133,8 +133,13 @@ type State = [Frame]
 
 --- Functions ---
 
+    -- Value Extractors
 toA (FA x) = x
 toI (FI x) = x
 toC (FC x) = x
 toP (FP x) = x
 
+
+    -- Starting state
+initialState :: State
+initialState = [Frame GameStart 0 0 52 [] [] 0 []]

@@ -129,12 +129,8 @@ shellCommand s cmd = case cmd of
                 (s, "Frames: " ++ (show $ length s))
 
         -- MAKE A COMMAND TO DISPLAY THE NUMBER OF ROUNDS (CALCULATE OR STORE IT)
---    ('h':_) ->
+--    "h" ->
 --                (s, help)
-
--- COMMAND TO PRINT THE CURRENT FRAME IN HUMAN READABLE FORMAT OR SOMETHING
--- AND SPECIFIC ONES (OR A GENERAL ONE WHICH TAKES A FIELD AS ARGUMENT)
---  WHICH RETURNS SOME VALUE FROM THE STATE (MOSTLY LAST FRAME)
 
         -- Otherwise: not a recognised command
     _            -> (s, "Command not recognised")
@@ -155,62 +151,59 @@ inTheLead = fst . maximumBy cmpBal . balances
     where cmpBal x y = compare (snd x) (snd y)
 
 
-    -- Starting state
-initialState :: State
-initialState = [Frame GameStart 0 0 52 [] [] 0 []]
-
-
     -- Set the number of players
 setPlayers :: State -> Int -> State
-setPlayers s n = newFrame s [("action", FA SetPlayers), ("playersNum", FI n)]
+setPlayers s n = newFrame s [("action", FA (SetPlayers n)), ("playersNum", FI n)]
 
 
     -- Set the player x (x after the actual player) to be the dealer
 setDealer :: State -> Int -> State
-setDealer s p = newFrame s [("action", FA SetDealer), ("dealer", FI p)]
+setDealer s p = newFrame s [("action", FA (SetDealer p)), ("dealer", FI p)]
 
 
     -- Give out two cards per player
 startHand :: State -> [Card] -> State
-startHand s@(f:_) cs = newFrame s [("action", FA StartHand), ("myCards", FC cs), ("cardsInDeck", FI ndcs)]
+startHand s@(f:_) cs = newFrame s [("action", FA (StartHand cs)), ("myCards", FC cs), ("cardsInDeck", FI ndcs)]
     where ndcs = (cardsInDeck f) - 2 * (playersNum f)
 
 
     -- Discard n cards (for some reason)
 discard :: State -> Int -> State
-discard s@(f:_) n = newFrame s [("action", FA Discard), ("cardsInDeck", FI ndcs)]
+discard s@(f:_) n = newFrame s [("action", FA (Discard n)), ("cardsInDeck", FI ndcs)]
     where ndcs = (cardsInDeck f) - n
 
 
     -- Add some cards to the table (Flop, Turn, River)
-addCards :: State -> Action -> [Card] -> State
-addCards s@(f:_) act cs = newFrame s [("action", FA act), ("cardsInDeck", FI ndcs), ("table", FC ntab)]
+addCards :: State -> ([Card] -> Action) -> [Card] -> State
+addCards s@(f:_) act cs = newFrame s [("action", FA nAct), ("cardsInDeck", FI ndcs), ("table", FC ntab)]
     where ndcs = (cardsInDeck f) - (length cs) - discdCs
           ntab = cs ++ (table f)
-          discdCs
-            | act == Flop = 3
-            | otherwise   = 1
-
+          nAct = act cs
+          discdCs = case nAct of
+            Flop _ -> 3
+            _      -> 1
 
     -- Player x Folds
 plFolds :: State -> Int -> State
-plFolds s@(f:_) x = newFrame s [("action", FA Fold), ("players", FP npls)]
-    where npls = map plStatus (players f)
+plFolds s@(f:_) x = newFrame s [("action", FA (Fold x)), ("players", FP nPls)]
+    where nPls = map plStatus (players f)
           plStatus pl
-            | num pl == x = Player x (balance pl) (onPlate pl) Fold
+            | num pl == x = Player x (balance pl) (onPlate pl) (Fold x)
             | otherwise   = pl
 
 
     -- INTRODUCE NEGATIVE BALANCE CHECKS SOMEWHERE
     -- ALSO, CHECK THAT A Bet IS >= THE PREVIOUS ONE
     -- Player x bets or raises by amount a
-plBets :: State -> Action -> Int -> Int -> State
-plBets s@(f:_) act x a = newFrame s [("action", FA act), ("players", FP npls)]
-    where npls = map plStatus (players f)
-          plStatus pl
-            | num pl == x && act == Bet   = Player x nBal nPlt act
-            | num pl == x && act == Raise = Player x (nBal-pPPlt) (nPlt+pPPlt) act
-            | otherwise                   = pl
+plBets :: State -> (Int -> Int -> Action) -> Int -> Int -> State
+plBets s@(f:_) act x a = newFrame s [("action", FA nAct), ("players", FP nPls)]
+    where nPls = map plStatus (players f)
+          nAct = act x a
+          plStatus pl = if num pl == x
+            then case nAct of
+                Bet _ _   -> Player x nBal nPlt nAct
+                Raise _ _ -> Player x (nBal-pPPlt) (nPlt+pPPlt) nAct
+            else pl
                 where nBal = ((balance pl) - a)
                       nPlt = ((onPlate pl) + a)
 
@@ -240,18 +233,18 @@ newFrame s@(f:_) fieldList = (Frame act plN dea dCN tab mCs plt pls):s
 
     -- Take cards in shorthand as input, and if correct, execute a StartHand, Flop,
     -- Turn or River
-cardHandler :: State -> Action -> [String] -> (State,String)
+cardHandler :: State -> ([Card] -> Action) -> [String] -> (State,String)
 cardHandler s act sCs = maybe (s, "Cards have been mistyped") actFunc mCs
     where mCs = sequence $ map toCard sCs
-          actFunc = case act of
-                        StartHand -> (\cs -> (startHand s cs,
-                                    "Starting hand added: " ++ (show cs)) )
-                        Flop  -> (\cs -> (addCards s Flop cs,
-                                    "Flop added: " ++ (show cs)) )
-                        Turn  -> (\cs -> (addCards s Turn cs,
-                                    "Turn added: " ++ (show cs)) )
-                        River -> (\cs -> (addCards s River cs,
-                                    "River added: " ++ (show cs)) )
+          actFunc = case act [] of
+                        StartHand _ -> (\cs -> (startHand s cs,
+                                        "Starting hand added: " ++ (show cs)) )
+                        Flop _      -> (\cs -> (addCards s Flop cs,
+                                        "Flop added: " ++ (show cs)) )
+                        Turn _      -> (\cs -> (addCards s Turn cs,
+                                        "Turn added: " ++ (show cs)) )
+                        River _     -> (\cs -> (addCards s River cs,
+                                        "River added: " ++ (show cs)) )
 
 
     -- Read out any field of the current Frame
