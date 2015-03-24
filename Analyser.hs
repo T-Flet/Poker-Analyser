@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.17 - 21-22/03/2015
+--          0.19 - 23-24/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -40,7 +40,8 @@ import qualified Data.Map as M (lookup, fromList)
 ---- 1 - MAIN FUNCTIONS --------------------------------------------------------
 
 main = do
-    putStrLn "Analyser Shell"
+    putStrLn "Poker Analyser Shell"
+    putStrLn "(Write \"h\" for command help)"
     gameShell initialState
 
 
@@ -129,8 +130,8 @@ shellCommand s cmd = case cmd of
                 (s, "Frames: " ++ (show $ length s))
 
         -- MAKE A COMMAND TO DISPLAY THE NUMBER OF ROUNDS (CALCULATE OR STORE IT)
---    "h" ->
---                (s, help)
+    "h" ->
+                (s, help)
 
         -- Otherwise: not a recognised command
     _            -> (s, "Command not recognised")
@@ -138,6 +139,35 @@ shellCommand s cmd = case cmd of
 
 
 ---- 2 - SHELL DIRECT FUNCTIONS ------------------------------------------------
+
+    -- Command help
+help :: String
+help = " \n\
+\   -- Player related commands start with p \n\
+\   pn <Int>        Set players number \n\
+\   p<Int>d         Player x is dealer (the actual player is the first in whichever direction) \n\
+\ \n\
+\   p<Int>b         Player x Folds \n\
+\   p<Int>b <Int>   Player x Bets amount (or Raises, but reporting the bet) \n\
+\   p<Int>r <Int>   Player x Raises by amount \n\
+\ \n\
+\   b               Back one action \n\
+\ \n\
+\   -- Card related commands start with p \n\
+\   cd <Int>                Discard n cards \n\
+\   ci <value><suit>(x2)    Set initial hand \n\
+\   cf <value><suit>(x3)    Flop \n\
+\   ct <value><suit>        Turn \n\
+\   cr <value><suit>        River \n\
+\ \n\
+\   -- Frame related commands begin with f \n\
+\   ff <field>  Show any field from current frame \n\
+\   fff         Show the full frame fields \n\
+\   fb          Show players' balances \n\
+\   fa          Number of actions or frames \n\
+\ \n\
+\   h           This help string \n\
+\ "
 
     -- Show players' balances
 balances :: State -> [(Int,Int)]
@@ -153,7 +183,8 @@ inTheLead = fst . maximumBy cmpBal . balances
 
     -- Set the number of players
 setPlayers :: State -> Int -> State
-setPlayers s n = newFrame s [("action", FA (SetPlayers n)), ("playersNum", FI n)]
+setPlayers s n = newFrame s [("action", FA (SetPlayers n)), ("playersNum", FI n), ("players", FP pls)]
+    where pls = map (\nu-> Player nu 0 0 Idle) [1..n]
 
 
     -- Set the player x (x after the actual player) to be the dealer
