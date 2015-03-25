@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.2 - 22-23/03/2015
+--          0.3 - 24-25/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -39,7 +39,9 @@ data Suit = Spades | Clubs | Diamonds | Hearts
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
 
 data Card = Card {value :: Value, suit :: Suit}
-                deriving (Eq, Ord, Show)
+                deriving (Eq, Ord)
+instance Show Card where
+    show c = (show $ value c) ++ " of " ++ (show $ suit c)
 instance Enum Card where
     toEnum i   = Card (toEnum (i`mod`13) :: Value) (toEnum (i`div`13) :: Suit)
     fromEnum c = (fromEnum $ value c) + ((*13) . fromEnum $ suit c)
@@ -115,14 +117,32 @@ data Action = GameStart | SetPlayers Int | SetDealer Int | Discard Int
                 deriving (Eq, Ord, Show)
 
 data Player = Player {num :: Int, balance :: Int, onPlate :: Int, status :: Action}
-                deriving (Eq, Ord, Show)
+                deriving (Eq, Ord)
     -- EVENTUALLY INTRODUCE STATISTICS TRACKING IN HERE
+instance Show Player where
+    show pl = concat [  "\n",
+                        "\tPlayer: ",   show $ num pl,
+                        ", Balance: ",  show $ balance pl,
+                        ", Bet: ",      show $ onPlate pl,
+                        ", Status: ",   show $ status pl]
 
 data Frame = Frame {action :: Action, playersNum :: Int, dealer :: Int,
                     cardsInDeck :: Int, table :: [Card], myCards :: [Card],
                     plate :: Int, players :: [Player]}
-                deriving (Eq, Show)
+                deriving (Eq)
                     -- The actual player is the first (0) in players list
+instance Show Frame where
+    show fr = unlines $ map (\sf-> (fst sf) ++ ((snd sf) fr)) funcs
+        where funcs :: [(String,(Frame -> String))]
+              funcs = [ ("Current action: ",    show . action),
+                        ("Players Number: ",    show . playersNum),
+                        ("Dealer ID: ",         show . dealer),
+                        ("Cards in deck: ",     show . cardsInDeck),
+                        ("Cards on table: ",    show . table),
+                        ("My Cards: ",          show . myCards),
+                        ("Amount on plate: ",   show . plate),
+                        ("Players' Status: ",   show . players)]
+
 
 data FrameField = FA Action | FI Int | FC [Card] | FP [Player]
                 deriving (Eq, Show)

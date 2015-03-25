@@ -28,13 +28,25 @@
 
     MAKE A DEFAULT maybe FALLBACK FUNCTION FOR EACH COMMAND (LOOK AT toCard)
 
-    MAKE A NICER Show INSTANCE FOR Frame AND OTHER STUFF THAN THE DERIVED ONES
+    ATTEMPT TO BRUTE FORCE SARTING CARDS RANKS
+
+    IN GENERAL: NEED TO IMPLEMENT CONDITIONAL PROBABILITIES (A|B) IN ORDER TO
+    CATER FOR THE FACT THAT SOME CARDS THAT ARE NEEDED FOR A HAND COULD HAVE
+    ALREADY BEEN EXTRACTED AND BE IN OTHER PLAYERS' HANDS.
 
 
 
 ---- 2 - TO CONSIDER -----------------------------------------------------------
 
-    ADD FRAME NUMBER FIELD
+    INTERESTING IDEA TO START WITH:
+        RANK ALL 52! HANDS 10 TIMES, ONE PER HandType. THEN CREATE A SINGLE LIST
+        MERGING THEM SOMEHOW...
+
+    FUNCTION whatProb WHICH IS GIVEN THE PRESENT CARDS AND STUFF LIKE
+    Either Value Suit OR [Card] AND RETURNS THE PROBABILITY OF GETTING SUCH A
+    SET FROM THE PRESENT ONES
+        PERHAPS THE need FIELD IN Prob SHOULD BE OF THE TYPE OF THAT STUFF
+        OR Prob SHOULD ALSO HAVE A cards FIELD LIKE Hand.
 
     COULD JUST BRUTE FORCE ALL POSSIBLE HANDS, SORT THEM, RANK THEM AND SAVE THE
     RESULT AS A DATA STRUCTURE TO IMPORT.
@@ -42,9 +54,7 @@
 
         START BY DOING IT FOR STARTING PAIRS. VERY IMPORTANT. DO IT!!!!!!!!
 
-    IN GENERAL: NEED TO IMPLEMENT CONDITIONAL PROBABILITIES (A|B) IN ORDER TO
-    CATER FOR THE FACT THAT SOME CARDS THAT ARE NEEDED FOR A HAND COULD HAVE
-    ALREADY BEEN EXTRACTED AND BE IN OTHER PLAYERS' HANDS.
+    REALLY THINK ABOUT INCREMENTAL VS COMPREHENSIVE PROBABILITY DETERMINATION
 
     EVEN IF THE INCREMENTAL PROBABILITY ENDS UP NOT BEING IMPLEMENTED, MAKE IT
     SO THAT EVERYTHING IS FIRST CALCULATED FOR THE TABLE SO THAT PROBABILITIES
@@ -55,8 +65,6 @@
     CONSIDER REMOVING THE HandType VALUE FROM Hand AND Prob, AND JUST MAKE
     Data.MapS (DICTIONARIES) OF ( (HandType,Prob) AND (HandType,Hand) ) OR
     (HandType,Either Prob Hand)
-
-    REALLY THINK ABOUT INCREMENTAL VS COMPREHENSIVE PROBABILITY DETERMINATION
 
     PERHAPS GROUP straightProb AND highCardProb TOGETHER
 
@@ -73,12 +81,6 @@
             F: HandType x |-> [0..numberOfAllPossibleShuchHandTypes-1]
                 OR PERHAPS FROM 1 TO (NOT -1)
                 E.G. : HighCard -> [0..13-1]
-
-    FUNCTION whatProb WHICH IS GIVEN THE PRESENT CARDS AND STUFF LIKE
-    Either Value Suit OR [Card] AND RETURNS THE PROBABILITY OF GETTING SUCH A
-    SET FROM THE PRESENT ONES
-        PERHAPS THE need FIELD IN Prob SHOULD BE OF THE TYPE OF THAT STUFF
-        OR Prob SHOULD ALSO HAVE A cards FIELD LIKE Hand.
 
     STRUCTURING CAN BE THE FOLLOWING:
      ONE FUNCTION TAKES THE TABLE AND RETURNS Prob OF ALL HandtypeS;
@@ -123,8 +125,5 @@ let pls = [Player 1 50 10 (Fold 1), Player 2 300 30 (Bet 2 30), Player 3 200 50 
 let fr = Frame (Discard 3) 4 2 40 a b 0 pls
 let fl = [("action", FA (Fold 2)), ("dealer", FI 3)]
 let ss = newFrame [fr] fl
-let ss = [Frame {action = Fold 2, playersNum = 4, dealer = 3, cardsInDeck = 40, table = [Card {value = King, suit = Spades},Card {value = Queen, suit = Hearts},Card {value = Jack, suit = Clubs}], myCards = [Card {value = Three, suit = Spades},Card {value = Seven, suit = Hearts},Card {value = Eight, suit = Diamonds}], plate = 0, players = [Player {num = 1, balance
-= 50, onPlate = 10, status = Fold 1},Player {num = 2, balance = 300, onPlate = 30, status = Bet 2 30},Player {num = 3,
-balance = 200, onPlate = 50, status = Raise 3 50}]},Frame {action = Discard 3, playersNum = 4, dealer = 2, cardsInDeck
-= 40, table = [Card {value = King, suit = Spades},Card {value = Queen, suit = Hearts},Card {value = Jack, suit = Clubs}], myCards = [Card {value = Three, suit = Spades},Card {value = Seven, suit = Hearts},Card {value = Eight, suit = Diamonds}], plate = 0, players = [Player {num = 1, balance = 50, onPlate = 10, status = Fold 1},Player {num = 2, balance = 300, onPlate = 30, status = Bet 2 30},Player {num = 3, balance = 200, onPlate = 50, status = Raise 3 50}]}]
+let ss = [Frame {action = Fold 2, playersNum = 4, dealer = 3, cardsInDeck = 40, table = [Card {value = King, suit = Spades},Card {value = Queen, suit = Hearts},Card {value = Jack, suit = Clubs}], myCards = [Card {value = Three, suit = Spades},Card {value = Seven, suit = Hearts},Card {value = Eight, suit = Diamonds}], plate = 0, players = [Player {num = 1, balance = 50, onPlate = 10, status = Fold 1},Player {num = 2, balance = 300, onPlate = 30, status = Bet 2 30},Player {num = 3, balance = 200, onPlate = 50, status = Raise 3 50}]},Frame {action = Discard 3, playersNum = 4, dealer = 2, cardsInDeck = 40, table = [Card {value = King, suit = Spades},Card {value = Queen, suit = Hearts},Card {value = Jack, suit = Clubs}], myCards = [Card {value = Three, suit = Spades},Card {value = Seven, suit = Hearts},Card {value = Eight, suit = Diamonds}], plate = 0, players = [Player {num = 1, balance = 50, onPlate = 10, status = Fold 1},Player {num = 2, balance = 300, onPlate = 30, status = Bet 2 30},Player {num = 3, balance = 200, onPlate = 50, status = Raise 3 50}]}]
 
