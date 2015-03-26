@@ -92,11 +92,7 @@ probsToHand scs prs = Hand hT scs
 --              ---- WRONG: NOT CONSIDERING DISCARDED CARDS, DIFFERENT AT EACH TURN.
 --
 --              -- Number of required cards of the same suits
---          required = map (5-) $ map length suitGroups
---
---              -- Split cards by suits and order them by size of sets
---          suitGroups = sort . groupBy eqSuit $ sortBySuit scs
---          eqSuit c1 c2 = (suit c1) == (suit c2)
+--          required = map (5-) . map length $ suitGroups scs
 
 
 

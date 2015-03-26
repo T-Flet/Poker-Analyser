@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.3 - 24-25/03/2015
+--          0.4 - 25-26/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -16,6 +16,7 @@
 --       1 - Card Related Data Types
 --       2 - Hand Related Data Types
 --       3 - State Related Data Types
+--       4 - HandType Checkers
 --
 
 
@@ -24,7 +25,7 @@
 
 module DataTypes where
 
-import Data.List (sortBy)
+import Data.List (sort, sortBy, groupBy)
 import Data.Char (toLower)
 
 
@@ -69,6 +70,7 @@ sortBySuit cs = sortBy cmpSui cs
 
 
     -- Maybe get a card from a pair of value and suit characters
+    -- NOTE: Did not make this a Read instance because I need the Maybe
 toCard :: [Char] -> Maybe Card
 toCard uVS
     | vsMatch = Just $ Card val sui
@@ -83,6 +85,18 @@ toCard uVS
               sui = case s of
                     's' -> Spades   ; 'c' -> Clubs ;
                     'd' -> Diamonds ; 'h' -> Hearts
+
+
+    -- Group cards by value and by suit
+valueGroups, suitGroups :: [Card] -> [[Card]]
+valueGroups = groupCardsBy value . sort
+suitGroups  = groupCardsBy suit  . sortBySuit
+
+    -- Group cards by value or suit assuming they are already sorted
+    -- by value or suit, respectively
+groupCardsBy :: Eq a => (Card -> a) -> [Card] -> [[Card]]
+groupCardsBy suitOrValue = reverse . sort . groupBy eqField
+    where eqField c1 c2 = (suitOrValue c1) == (suitOrValue c2)
 
 
 
@@ -163,3 +177,40 @@ toP (FP x) = x
     -- Starting state
 initialState :: State
 initialState = [Frame GameStart 0 0 52 [] [] 0 []]
+
+
+
+---- 4 - HANDTYPE CHECKERS -----------------------------------------------------
+
+isPair, isThreeOfAKind, isFourOfAKind :: [Card] -> Maybe Value
+isPair         = isNplet 2
+isThreeOfAKind = isNplet 3
+isFourOfAKind  = isNplet 4
+
+
+isTwoPair, isFullHouse :: [Card] -> Maybe [Value]
+isTwoPair   = is2Nplet 2 2
+isFullHouse = is2Nplet 3 2
+
+
+
+--- General Functions ---
+
+    -- Check whether some cards constitute an N-plet (N=2 => Pair, ...)
+isNplet :: Int -> [Card] -> Maybe Value
+isNplet n cs
+    | length highMultVal >= n = Just . value . head $ highMultVal
+    | otherwise               = Nothing
+        where highMultVal = head $ valueGroups cs
+
+
+    -- Check whether some cards constitute two N-plets (N=3 and 2 (or 2 and 3) => FullHouse, ...)
+is2Nplet :: Int -> Int -> [Card] -> Maybe [Value]
+is2Nplet n m cs
+    | length xg >= a && length yg >= b = Just [value x, value y]
+    | otherwise                        = Nothing
+        where xg@(x:_):yg@(y:_):_ = valueGroups cs
+              [b,a] = sort [n,m]
+
+
+

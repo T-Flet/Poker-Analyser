@@ -38,6 +38,9 @@
 
 ---- 2 - TO CONSIDER -----------------------------------------------------------
 
+    THE FACT THAT THE CARDS THAT ARE OUT ARE NOT IN, XD
+    MODIFY POSSIBILITIES ACCORDING TO WHAT CARDS ARE KNOWN TO BE OUT
+
     INTERESTING IDEA TO START WITH:
         RANK ALL 52! HANDS 10 TIMES, ONE PER HandType. THEN CREATE A SINGLE LIST
         MERGING THEM SOMEHOW...
@@ -117,6 +120,7 @@
 
 let a = [Card King Spades, Card Queen Hearts, Card Jack Clubs]
 let b = [Card Three Spades, Card Seven Hearts, Card Eight Diamonds]
+let Just c = sequence $ map toCard ["ks", "qh", "jd", "1c", "kh", "ks", "qd"]
 
 let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
 let h = probsToHand (sort a) (reverse $ sort b)
