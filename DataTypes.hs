@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.4 - 25-26/03/2015
+--          0.5 - 26-27/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -26,6 +26,7 @@
 module DataTypes where
 
 import Data.List (sort, sortBy, groupBy)
+import Data.Function (on)
 import Data.Char (toLower)
 
 
@@ -95,8 +96,9 @@ suitGroups  = groupCardsBy suit  . sortBySuit
     -- Group cards by value or suit assuming they are already sorted
     -- by value or suit, respectively
 groupCardsBy :: Eq a => (Card -> a) -> [Card] -> [[Card]]
-groupCardsBy suitOrValue = reverse . sort . groupBy eqField
+groupCardsBy suitOrValue = sortBy descLength . groupBy eqField
     where eqField c1 c2 = (suitOrValue c1) == (suitOrValue c2)
+          descLength l1 l2 = (compare `on` length) l2 l1
 
 
 
@@ -182,16 +184,65 @@ initialState = [Frame GameStart 0 0 52 [] [] 0 []]
 
 ---- 4 - HANDTYPE CHECKERS -----------------------------------------------------
 
+    -- Returns the Value of the highest card
+    -- This will always be true; the Maybe is there just for consistency
+isHighCard :: [Card] -> Maybe Value
+isHighCard = Just . value . head . sort
+
+
+    -- Return the Value of the N-plet
 isPair, isThreeOfAKind, isFourOfAKind :: [Card] -> Maybe Value
 isPair         = isNplet 2
 isThreeOfAKind = isNplet 3
 isFourOfAKind  = isNplet 4
 
 
+    -- Return the Values of the N-Plets in descending order
 isTwoPair, isFullHouse :: [Card] -> Maybe [Value]
 isTwoPair   = is2Nplet 2 2
 isFullHouse = is2Nplet 3 2
 
+
+    -- Returns the value of the highest card in the Straight
+isStraight :: [Card] -> Maybe Value
+isStraight cs
+    | length inOrder >= 5 = Just . value $ last inOrder
+    | otherwise           = Nothing
+        where inOrder = foldr isPred [] $ sort cs
+              isPred c []         = [c]
+              isPred c acc@(a:cc)
+                | length acc >= 5 = acc
+                | va == Two       = [c]
+                | vc == pred va   = c:acc
+                | otherwise       = [c]
+                    where vc = value c
+                          va = value a
+
+
+    -- Returns the Suit of the Flush
+isFlush :: [Card] -> Maybe Suit
+isFlush cs
+    | length highGrs >= 5 = Just . suit $ head highGrs
+    | otherwise           = Nothing
+        where highGrs = head $ suitGroups cs
+
+
+    -- Returns the Suit and the Value of the highest card in the StraightFlush
+    -- Does not simply return a Card (which has the same fields) for pattern matching's sake
+    --
+    -- NEED TO REDO BY OPERATING THE CHECKS ON THE SAME 5 CARDS (isRoyalFlush WILL CHANGE WITH THIS)
+isStraightFlush :: [Card] -> Maybe (Suit,Value)
+isStraightFlush cs
+    | Just val <- isStraight cs , Just sui <- isFlush cs = Just (sui, val)
+    | otherwise = Nothing
+
+
+    -- Returns the Suit of the RoyalFlush
+    -- (If Suit hierarchy were implemented, it could only be Hearts)
+isRoyalFlush :: [Card] -> Maybe Suit
+isRoyalFlush cs = case isStraightFlush cs of
+    Just (s,Ace) -> Just s
+    _            -> Nothing
 
 
 --- General Functions ---
@@ -214,3 +265,20 @@ is2Nplet n m cs
 
 
 
+
+
+
+---- 5 - NON-DATATYPE FUNCTIONS ------------------------------------------------
+
+    -- Stricter version of groupBy in the sense that does not assume that the
+    -- provided comparison function is an equivalence relation.
+    -- Only transitivity is assumed here
+    -- i.e. This function compares adjacent values, and does not take the
+    -- ("wrong") shortcut that the real groupBy does
+groupBy' :: (a -> a -> Bool) -> [a] -> [[a]]
+groupBy' _   []  = []
+groupBy' _   [x] = [[x]]
+groupBy' cmp (x:xs@(x':_))
+    | cmp x x'   = (x:y):ys
+    | otherwise  = [x]:r
+        where r@(y:ys) = groupBy' cmp xs
