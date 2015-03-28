@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.5 - 26-27/03/2015
+--          0.6 - 27-28/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -98,7 +98,6 @@ suitGroups  = groupCardsBy suit  . sortBySuit
 groupCardsBy :: Eq a => (Card -> a) -> [Card] -> [[Card]]
 groupCardsBy suitOrValue = sortBy descLength . groupBy eqField
     where eqField c1 c2 = (suitOrValue c1) == (suitOrValue c2)
-          descLength l1 l2 = (compare `on` length) l2 l1
 
 
 
@@ -157,7 +156,7 @@ instance Show Frame where
                         ("Cards on table: ",    show . table),
                         ("My Cards: ",          show . myCards),
                         ("Amount on plate: ",   show . plate),
-                        ("Players' Status: ",   show . players)]
+                        ("Players' Status: ",   show . players) ]
 
 
 data FrameField = FA Action | FI Int | FC [Card] | FP [Player]
@@ -184,10 +183,10 @@ initialState = [Frame GameStart 0 0 52 [] [] 0 []]
 
 ---- 4 - HANDTYPE CHECKERS -----------------------------------------------------
 
-    -- Returns the Value of the highest card
+    -- Return the Value of the highest card
     -- This will always be true; the Maybe is there just for consistency
 isHighCard :: [Card] -> Maybe Value
-isHighCard = Just . value . head . sort
+isHighCard = Just . value . last . sort
 
 
     -- Return the Value of the N-plet
@@ -205,36 +204,26 @@ isFullHouse = is2Nplet 3 2
 
     -- Returns the value of the highest card in the Straight
 isStraight :: [Card] -> Maybe Value
-isStraight cs
-    | length inOrder >= 5 = Just . value $ last inOrder
-    | otherwise           = Nothing
-        where inOrder = foldr isPred [] $ sort cs
-              isPred c []         = [c]
-              isPred c acc@(a:cc)
-                | length acc >= 5 = acc
-                | va == Two       = [c]
-                | vc == pred va   = c:acc
-                | otherwise       = [c]
-                    where vc = value c
-                          va = value a
+isStraight cs = isLenType 5 value $ inOrder cs
 
 
     -- Returns the Suit of the Flush
 isFlush :: [Card] -> Maybe Suit
-isFlush cs
-    | length highGrs >= 5 = Just . suit $ head highGrs
-    | otherwise           = Nothing
-        where highGrs = head $ suitGroups cs
+isFlush cs = isLenType 5 suit $ suitGroups cs
 
 
     -- Returns the Suit and the Value of the highest card in the StraightFlush
     -- Does not simply return a Card (which has the same fields) for pattern matching's sake
-    --
-    -- NEED TO REDO BY OPERATING THE CHECKS ON THE SAME 5 CARDS (isRoyalFlush WILL CHANGE WITH THIS)
+    -- NOTE: The first pattern match could have also been the real isStraight,
+    --       but inOrder would have been applied twice (not as efficient)
 isStraightFlush :: [Card] -> Maybe (Suit,Value)
 isStraightFlush cs
-    | Just val <- isStraight cs , Just sui <- isFlush cs = Just (sui, val)
+    | Just val <- isStraight' , Just sui <- isFlush hocs = Just (sui, val)
     | otherwise = Nothing
+        where hocs = head ocs
+              isStraight' = isLenType 5 value ocs
+              ocs = inOrder cs
+
 
 
     -- Returns the Suit of the RoyalFlush
@@ -249,10 +238,7 @@ isRoyalFlush cs = case isStraightFlush cs of
 
     -- Check whether some cards constitute an N-plet (N=2 => Pair, ...)
 isNplet :: Int -> [Card] -> Maybe Value
-isNplet n cs
-    | length highMultVal >= n = Just . value . head $ highMultVal
-    | otherwise               = Nothing
-        where highMultVal = head $ valueGroups cs
+isNplet n cs = isLenType n value $ valueGroups cs
 
 
     -- Check whether some cards constitute two N-plets (N=3 and 2 (or 2 and 3) => FullHouse, ...)
@@ -264,11 +250,29 @@ is2Nplet n m cs
               [b,a] = sort [n,m]
 
 
+    -- Return a list of lists of cards grouped if of consecutive values
+inOrder :: [Card] -> [[Card]]
+inOrder cs = sortBy descLength . groupBy' (isPred `on` value) . reverse $ sort cs
+    where isPred v1 v2 = case v1 of
+            Two -> False
+            _   -> v2 == pred v1
 
+
+    -- Given a list of lists of cards, return the suit or value of the first
+    -- list in it if its length is greater than or equal to n
+isLenType :: Int -> (Card -> a) -> [[Card]] -> Maybe a
+isLenType n suitOrValue cs
+    | length hcs >= n = Just . suitOrValue $ head hcs
+    | otherwise       = Nothing
+        where hcs = head cs
 
 
 
 ---- 5 - NON-DATATYPE FUNCTIONS ------------------------------------------------
+
+    -- Descending list ordering function. Perfect for: sortBy descLength $ [[a]]
+descLength :: [a] -> [a] -> Ordering
+descLength l1 l2 = (compare `on` length) l2 l1
 
     -- Stricter version of groupBy in the sense that does not assume that the
     -- provided comparison function is an equivalence relation.

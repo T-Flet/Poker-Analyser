@@ -121,6 +121,7 @@
 let a = [Card King Spades, Card Queen Hearts, Card Jack Clubs]
 let b = [Card Three Spades, Card Seven Hearts, Card Eight Diamonds]
 let Just c = sequence $ map toCard ["ks", "qh", "jd", "1c", "kh", "ks", "qd"]
+let Just d = sequence $ map toCard ["3h", "5c", "ks", "1s", "2d", "ah", "9d"]
 
 let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
 let h = probsToHand (sort a) (reverse $ sort b)
