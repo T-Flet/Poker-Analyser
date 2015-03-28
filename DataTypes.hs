@@ -114,8 +114,19 @@ data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit
                 deriving (Eq, Ord, Show)
 
 
+data HandTypesField = HV Value | HS Suit | HL [Value] | HT (Suit,Value)
+                deriving (Eq, Show)
+
+
 
 --- Functions ---
+
+    -- Value Extractors
+toV (HV x) = x
+toS (HS x) = x
+toL (HL x) = x
+toT (HT x) = x
+
 
     -- List of "empty" probabilities in descending HandType
 noProbs :: [Prob]
@@ -183,6 +194,33 @@ initialState = [Frame GameStart 0 0 52 [] [] 0 []]
 
 ---- 4 - HANDTYPE CHECKERS -----------------------------------------------------
 
+    -- Return the best HandType that the given cards constitute
+bestHandType :: [Card] -> (HandType,HandTypesField)
+bestHandType = head . whatIs
+
+
+    -- Return all the HandTypes that the given cards constitute
+whatIs :: [Card] -> [(HandType,HandTypesField)]
+whatIs cs = concat [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
+    where rF = hTCard isRoyalFlush    HS RoyalFlush
+          sF = hTCard isStraightFlush HT StraightFlush
+          fK = hTCard isFourOfAKind   HV FourOfAKind
+          fH = hTCard isFullHouse     HL FullHouse
+          fl = hTCard isFlush         HS Flush
+          st = hTCard isStraight      HV Straight
+          tK = hTCard isThreeOfAKind  HV ThreeOfAKind
+          tP = hTCard isTwoPair       HL TwoPair
+          oP = hTCard isOnePair       HV OnePair
+          hC = hTCard isHighCard      HV HighCard
+
+          hTCard :: ([Card] -> Maybe a) -> (a -> HandTypesField) -> HandType -> [(HandType,HandTypesField)]
+          hTCard hTChecker constructor hT = maybe [] tupler $ hTChecker cs
+            where tupler x = [(hT, constructor x)]
+
+
+
+--- Single HandType Checkers ---
+
     -- Return the Value of the highest card
     -- This will always be true; the Maybe is there just for consistency
 isHighCard :: [Card] -> Maybe Value
@@ -190,8 +228,8 @@ isHighCard = Just . value . last . sort
 
 
     -- Return the Value of the N-plet
-isPair, isThreeOfAKind, isFourOfAKind :: [Card] -> Maybe Value
-isPair         = isNplet 2
+isOnePair, isThreeOfAKind, isFourOfAKind :: [Card] -> Maybe Value
+isOnePair      = isNplet 2
 isThreeOfAKind = isNplet 3
 isFourOfAKind  = isNplet 4
 
@@ -225,13 +263,13 @@ isStraightFlush cs
               ocs = inOrder cs
 
 
-
     -- Returns the Suit of the RoyalFlush
     -- (If Suit hierarchy were implemented, it could only be Hearts)
 isRoyalFlush :: [Card] -> Maybe Suit
 isRoyalFlush cs = case isStraightFlush cs of
     Just (s,Ace) -> Just s
     _            -> Nothing
+
 
 
 --- General Functions ---
