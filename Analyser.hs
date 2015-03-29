@@ -30,6 +30,7 @@
 ---- 0 - IMPORTS ---------------------------------------------------------------
 
 import DataTypes
+import HandTypeCheckers
 import Probabilities
 
 import Data.List (sort, sortBy, groupBy, maximumBy)

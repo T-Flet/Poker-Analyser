@@ -22,6 +22,8 @@
 
 ---- 1 - TO DO -----------------------------------------------------------------
 
+    MAKE HANDTYPECHECKERS ALSO RETURN THE 5 CARDS CONSTITUTING THE HANDTYPE
+
     GOOD SKETCH OF PROBABILITIES: https://en.wikipedia.org/wiki/Poker_probability_(Texas_hold_%27em)
 
     LOOK AT HAND DOMINATION
@@ -37,6 +39,10 @@
 
 
 ---- 2 - TO CONSIDER -----------------------------------------------------------
+
+    MOVING ALL "GENERAL FUNCTIONS" TO A SEPARATE FILE, WHICH CAN/WILL BE REUSED
+    IN OTHER PROJECTS AS WELL. (CASUS: groupBy' : THE STRICTER VERSION OF
+    groupBy, NOT REQUIRING AN EQUIVALENCE RELATION, JUST A TRANSITIVE FUNCTION)
 
     SHOULD THE HandTypes IN THE TUPLES IN whatIs AND bestHandType BE RETURNED
     DIRECTLY BY EACH HANDTYPE CHECKER INSTEAD OF BEING ADDED IN THESE FUNCTIONS?

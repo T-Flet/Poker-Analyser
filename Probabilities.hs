@@ -12,11 +12,12 @@
 --          calculations.
 --
 --   Sections:
---       1 - Imports
---       2 - Mathematical Functions
---       3 - Probability -> Hand Functions
---       4 - Hand Specific Probability Functions
---       5 - Quality Related Functions
+--       0 - Imports
+--       1 - Mathematical Functions
+--       2 - Probability -> Hand Functions
+--       3 - Hand Specific Probability Functions
+--       4 - Quality Related Functions
+--       5 - HandType instances counters
 --
 
 
@@ -26,13 +27,16 @@
 module Probabilities where
 
 import DataTypes
+import HandTypeCheckers
+
+import Data.List (delete)
 
 
 
 ---- 1 - MATHEMATICAL FUNCTIONS ------------------------------------------------
 
     -- Classic mathematical function
-choose :: Int -> Int -> Int
+choose :: Integral a => a -> a -> a
 n `choose` k = product [k+1..n] `div` product [1..n-k]
 
 
@@ -125,5 +129,29 @@ type Qual = Int
     -- Returns the Quality of a HighCard
 highCardQual :: Hand -> Qual
 highCardQual h = fromEnum . head . cards $ h
+
+
+
+---- 5 - HANDTYPE INSTANCES COUNTERS -------------------------------------------
+
+    -- Return the list of all HandTypes and how many "real " instances of each
+    -- exist, i.e. taking into account the fact that if some cards constitute
+    -- more than one HandType, they should count only as the highest one
+
+
+    -- Return how many instances of a specific HandType exist
+
+
+    -- Return all possible 5-card combinations ordered by SOME_ORDER
+--allHandCombinations :: [[Card]]
+--allHandCombinations = intsToCards $ combinations 5 allCards
+
+combinations :: Int -> [Int] -> [[Int]]
+combinations 1 xs = [[x] | x <- xs]
+combinations n xs = concat $ map (\x -> map (x:) $ combinations (n-1) (delete x xs)) xs
+    -- THIS IS WRONG: IT BEHAVES EXACTLY AS A LIST COMPREHENSION CHECKING THAT VALUES ARE DIFFERENT
+    -- I.E. IT DOES NOT TAKE THE DONE VALUES OFF.
+    -- REDO WITH A FOLD, POSSIBLY FOLDL', KEEPING THE "REMAINGIN" VALUES IN THE ACCUMULATOR
+
 
 
