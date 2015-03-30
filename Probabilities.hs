@@ -136,8 +136,19 @@ highCardQual h = fromEnum . head . cards $ h
 
     -- Cached result of: allHandTypesIn allCards
     -- NOTE: (sum $ map snd totHtsCounts) == (52 `choose` 5)
---totHtsCounts :: [(HandType,Int)]
---totHtsCounts =
+totHtsCounts :: [(HandType,Int)]
+totHtsCounts = [
+        (HighCard,1303560),
+        (OnePair,1098240),
+        (TwoPair,123552),
+        (ThreeOfAKind,54912),
+        (Straight,9180),
+        (Flush,5112),
+        (FullHouse,3744),
+        (FourOfAKind,624),
+        (StraightFlush,32),
+        (RoyalFlush,4)
+    ]
 
 
     -- Return the list of all HandTypes and how many "real " instances of each
