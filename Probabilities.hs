@@ -29,7 +29,7 @@ module Probabilities where
 import DataTypes
 import HandTypeCheckers
 
-import Data.List (delete)
+import Data.List (tails)
 
 
 
@@ -141,17 +141,27 @@ highCardQual h = fromEnum . head . cards $ h
 
     -- Return how many instances of a specific HandType exist
 
+    -- Return all possible 5-card combinations from the given cards
+--handCombinations :: [Card] -> [[Card]]
+--handCombinations = intsToCards . combinations . cardsToInts
 
-    -- Return all possible 5-card combinations ordered by SOME_ORDER
---allHandCombinations :: [[Card]]
---allHandCombinations = intsToCards $ combinations 5 allCards
+    -- Return all possible unordered 5-element combinations of elements of a
+    -- given list
+--combinations :: [a] -> [[a]]
+--combinations _ [] = []
+--combinations 2 ls = combinations2 ls
+--combinations n ls = map toMap . combinations $ tail ls
+--    where toMap = concat . zipWith zippingFunction ls restOfLists
+--          zippingFunction x ys = map (x:) ys
+--          toList a1 a2 = [a1,a2]
+--          restOfLists = tail $ tails ls
 
-combinations :: Int -> [Int] -> [[Int]]
-combinations 1 xs = [[x] | x <- xs]
-combinations n xs = concat $ map (\x -> map (x:) $ combinations (n-1) (delete x xs)) xs
-    -- THIS IS WRONG: IT BEHAVES EXACTLY AS A LIST COMPREHENSION CHECKING THAT VALUES ARE DIFFERENT
-    -- I.E. IT DOES NOT TAKE THE DONE VALUES OFF.
-    -- REDO WITH A FOLD, POSSIBLY FOLDL', KEEPING THE "REMAINGIN" VALUES IN THE ACCUMULATOR
 
+combinations2 :: [a] -> [[a]]
+combinations2 xs = concat $ zipWith zippingFunction xs restOfLists
+    where zippingFunction :: a -> [a] -> [[a]]
+          zippingFunction x ys = zipWith toList (repeat x) ys
+          toList a1 a2 = [a1,a2]
+          restOfLists = tail $ tails xs
 
 
