@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.1 - 20-21/03/2015
+--          0.2 - 30-31/03/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -134,34 +134,61 @@ highCardQual h = fromEnum . head . cards $ h
 
 ---- 5 - HANDTYPE INSTANCES COUNTERS -------------------------------------------
 
+    -- Cached result of: allHandTypesIn allCards
+    -- NOTE: (sum $ map snd totHtsCounts) == (52 `choose` 5)
+--totHtsCounts :: [(HandType,Int)]
+--totHtsCounts =
+
+
     -- Return the list of all HandTypes and how many "real " instances of each
-    -- exist, i.e. taking into account the fact that if some cards constitute
-    -- more than one HandType, they should count only as the highest one
+    -- exist in a given set of cards , i.e. taking into account the fact that if
+    -- some cards constitute more than one HandType, they should count only as
+    -- the highest one
+allHandTypesIn :: [Card] -> [(HandType,Int)]
+allHandTypesIn cs = identifyHts . foldl countHandTypes zeroes $ handCombinations cs
+    where identifyHts = zip (enumFrom HighCard)
+          zeroes = replicate 10 0
+          countHandTypes counts hand = concat [
+                    take itsHtNum counts,
+                    [(counts!!itsHtNum) + 1],
+                    drop (itsHtNum + 1) counts
+                ]
+            where itsHtNum = fromEnum . fst . bestHandType $ hand
 
 
-    -- Return how many instances of a specific HandType exist
+    -- Return how many hands have a specific HandType as their highest one
+totalHt :: HandType -> Int
+totalHt ht = ht `handTypeIn` allCards
+
+
+    -- Return how many hands have a specific HandType as their highest one
+    -- within a set of cards
+handTypeIn :: HandType -> [Card] -> Int
+ht `handTypeIn` cs = foldl countHandType 0 $ handCombinations cs
+    where countHandType count hand
+            | itsHt == ht = count + 1
+            | otherwise   = count
+            where itsHt = fst . bestHandType $ hand
+
 
     -- Return all possible 5-card combinations from the given cards
---handCombinations :: [Card] -> [[Card]]
---handCombinations = intsToCards . combinations . cardsToInts
-
-    -- Return all possible unordered 5-element combinations of elements of a
-    -- given list
---combinations :: [a] -> [[a]]
---combinations _ [] = []
---combinations 2 ls = combinations2 ls
---combinations n ls = map toMap . combinations $ tail ls
---    where toMap = concat . zipWith zippingFunction ls restOfLists
---          zippingFunction x ys = map (x:) ys
---          toList a1 a2 = [a1,a2]
---          restOfLists = tail $ tails ls
+handCombinations :: [Card] -> [[Card]]
+handCombinations = intsLToCardsL . combinations 5 . cardsToInts
 
 
-combinations2 :: [a] -> [[a]]
-combinations2 xs = concat $ zipWith zippingFunction xs restOfLists
-    where zippingFunction :: a -> [a] -> [[a]]
-          zippingFunction x ys = zipWith toList (repeat x) ys
-          toList a1 a2 = [a1,a2]
-          restOfLists = tail $ tails xs
+    -- Return all the "choose" combinations of length k from a list of length n
+    -- NOTE: This is a direct translation of the mathematical recurrence
+    -- relation of Binomial Coefficients
+    -- NOTE: (length $ combinations k xs) == ((length xs) `choose` k)
+combinations :: Int -> [a] -> [[a]]
+combinations k xs = combinations' (length xs) k xs
+  where combinations' n k' ls@(y:ys)
+          | k' == 0   = [[]]
+          | k' >= n   = [ls]
+          | null ls   = []
+          | otherwise = map (y:) nkMinus1 ++ nMinus1
+            where nkMinus1 = combinations' (n-1) (k'-1) ys
+                  nMinus1  = combinations' (n-1)  k'    ys
+
 
 

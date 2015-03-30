@@ -34,8 +34,19 @@ import Data.Function (on)
 ---- 1 - COMPLETE CHECKERS -----------------------------------------------------
 
     -- Return the best HandType that the given cards constitute
+    -- NOTE: Same as but much faster than: head . whatIs
 bestHandType :: [Card] -> (HandType,HandTypesField)
-bestHandType = head . whatIs
+bestHandType cs
+    | Just htv <- isRoyalFlush    cs = (RoyalFlush,    HS htv)
+    | Just htv <- isStraightFlush cs = (StraightFlush, HT htv)
+    | Just htv <- isFourOfAKind   cs = (FourOfAKind,   HV htv)
+    | Just htv <- isFullHouse     cs = (FullHouse,     HL htv)
+    | Just htv <- isFlush         cs = (Flush,         HS htv)
+    | Just htv <- isStraight      cs = (Straight,      HV htv)
+    | Just htv <- isThreeOfAKind  cs = (ThreeOfAKind,  HV htv)
+    | Just htv <- isTwoPair       cs = (TwoPair,       HL htv)
+    | Just htv <- isOnePair       cs = (OnePair,       HV htv)
+    | Just htv <- isHighCard      cs = (HighCard,      HV htv)
 
 
     -- Return all the HandTypes that the given cards constitute

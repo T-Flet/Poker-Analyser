@@ -56,9 +56,13 @@ instance Enum Card where
     -- List of all Cards
 allCards = enumFrom $ Card Two Spades
 
-    -- Transform a list of lists of integers in [0..51] to a list of cards
-intsToCards :: [[Int]] -> [[Card]]
-intsToCards = map (map toEnum)
+    -- Transform a list of lists of integers in [0..51] into the same for Cards
+intsLToCardsL :: [[Int]] -> [[Card]]
+intsLToCardsL = map (map toEnum)
+
+    -- Transform a list of Cards into a list of Integers
+cardsToInts :: [Card] -> [Int]
+cardsToInts = map fromEnum
 
 
 
