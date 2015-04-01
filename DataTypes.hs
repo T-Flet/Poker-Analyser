@@ -16,7 +16,6 @@
 --       1 - Card Related Data Types
 --       2 - Hand Related Data Types
 --       3 - State Related Data Types
---       4 - General Functions
 --
 
 
@@ -25,8 +24,9 @@
 
 module DataTypes where
 
+import GeneralFunctions (descLength)
+
 import Data.List (sort, sortBy, groupBy)
-import Data.Function (on)
 import Data.Char (toLower)
 
 
@@ -203,21 +203,3 @@ initialState = [Frame GameStart 0 0 52 [] [] 0 []]
 
 
 
----- 4 - GENERAL FUNCTIONS -----------------------------------------------------
-
-    -- Descending list ordering function. Perfect for: sortBy descLength $ [[a]]
-descLength :: [a] -> [a] -> Ordering
-descLength l1 l2 = (compare `on` length) l2 l1
-
-    -- Stricter version of groupBy in the sense that does not assume that the
-    -- provided comparison function is an equivalence relation.
-    -- Only transitivity is assumed here
-    -- i.e. This function compares adjacent values, and does not take the
-    -- ("wrong") shortcut that the real groupBy does
-groupBy' :: (a -> a -> Bool) -> [a] -> [[a]]
-groupBy' _   []  = []
-groupBy' _   [x] = [[x]]
-groupBy' cmp (x:xs@(x':_))
-    | cmp x x'   = (x:y):ys
-    | otherwise  = [x]:r
-        where r@(y:ys) = groupBy' cmp xs

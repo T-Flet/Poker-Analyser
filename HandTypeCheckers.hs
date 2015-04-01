@@ -24,6 +24,7 @@
 
 module HandTypeCheckers where
 
+import GeneralFunctions (descLength, groupBy')
 import DataTypes
 
 import Data.List (sort, sortBy)
@@ -122,7 +123,7 @@ isRoyalFlush cs = case isStraightFlush cs of
 
 
 
----- 3 - General Functions -----------------------------------------------------
+---- 3 - GENERAL FUNCTIONS -----------------------------------------------------
 
     -- Check whether some cards constitute an N-plet (N=2 => Pair, ...)
 isNplet :: Int -> [Card] -> Maybe Value
