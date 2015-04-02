@@ -22,6 +22,9 @@
 
 ---- 1 - TO DO -----------------------------------------------------------------
 
+    MAKE A FUNCTION RETURNING ALL THE HANDTYPES' PROBABILITIES FOR THE PLAYER
+    AND OTHER PLAYERS SIDE BY SIDE
+
     MAKE HANDTYPECHECKERS ALSO RETURN THE 5 CARDS CONSTITUTING THE HANDTYPE
 
     GOOD SKETCH OF PROBABILITIES: https://en.wikipedia.org/wiki/Poker_probability_(Texas_hold_%27em)

@@ -29,8 +29,8 @@ import Data.Function (on)
 ---- 1 - MATHEMATICAL FUNCTIONS ------------------------------------------------
 
     -- Classic mathematical function
-choose :: Integral a => a -> a -> a
-n `choose` k = product [k+1..n] `div` product [1..n-k]
+choose :: Integral a => a -> a -> Int
+n `choose` k = fromIntegral $ product [k+1..n] `div` product [1..n-k]
 
 
     -- Return all the "choose" combinations of length k from a list of length n

@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.1 - 31/03/2015
+--          0.2 - 01/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -15,6 +15,7 @@
 --       0 - Imports
 --       1 - HandType Instances Counters
 --       2 - HandType Rankers
+--       3 - General Functions
 --
 
 
@@ -87,5 +88,38 @@ handCombinations = intsLToCardsL . combinations 5 . cardsToInts
 
 ---- 2 - HANDTYPE RANKERS ------------------------------------------------------
 
+    -- These rankers do not take any Suit hierarchy into account, therefore
+    -- there are gaps in the ranks, which do not affect any process whatsoever.
 
+    -- Given a RoyalFlush, return its rank among the existing ones
+    -- NOTE: There are only 4, and are all equivalent
+rankRoyalFlush :: Suit -> Int
+rankRoyalFlush sui = minRank RoyalFlush
+
+
+    -- Given a StraightFlush, return its rank among the existing ones
+    -- NOTE: There are 32, but they depend only on the value of their highest
+    -- card, therefore there are 13, but realistically only 8.
+rankStraightFlush :: (Suit,Value) -> Int
+rankStraightFlush (sui,val) = minRank StraightFlush + fromEnum val
+
+
+
+
+
+
+
+---- 3 - GENERAL FUNCTIONS -----------------------------------------------------
+
+    -- Return the rank of the lowest specified HandType in the HandType counts
+    -- for all cards
+minRank :: HandType -> Int
+minRank = minRankIn totHtsCounts
+
+
+    -- Return the rank of the lowest specified HandType in the given HandType
+    -- counts
+minRankIn :: [(HandType,Int)] -> HandType -> Int
+minRankIn htCounts ht = sum $ map (snd . (htCounts!!)) [0..htNum - 1]
+    where htNum = fromEnum ht
 
