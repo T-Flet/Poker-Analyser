@@ -133,7 +133,10 @@ isNplet n cs = isLenType n value $ valueGroups cs
     -- Check whether some cards constitute two N-plets (N=3 and 2 (or 2 and 3) => FullHouse, ...)
 is2Nplet :: Int -> Int -> [Card] -> Maybe [Value]
 is2Nplet n m cs
-    | length xg >= a && length yg >= b = Just [value x, value y]
+    | length xg >= a && length yg >= b = if n == m
+                -- If TwoPair, give the higher value first
+                then Just . map value . reverse $ sort [x,y]
+                else Just [value x, value y]
     | otherwise                        = Nothing
         where xg@(x:_):yg@(y:_):_ = valueGroups cs
               [b,a] = sort [n,m]
