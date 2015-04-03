@@ -126,7 +126,12 @@ data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit
 
 
 data HandTypesField = HV Value | HS Suit | HL [Value] | HT (Suit,Value)
-                deriving (Eq, Show)
+                deriving (Eq)
+instance Show HandTypesField where
+   show (HV x) = show x
+   show (HS x) = show x
+   show (HL x) = show x
+   show (HT x) = show x
 
 
 

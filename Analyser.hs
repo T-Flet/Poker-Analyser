@@ -34,8 +34,9 @@ import HandTypeCheckers
 import HandRankings
 import Probabilities
 
-import Data.List (sort, sortBy, groupBy, maximumBy)
+import Data.List (sort, sortBy, groupBy, maximumBy, group)
 import qualified Data.Map as M (lookup, fromList)
+import Data.Function (on)
 
 
 
@@ -56,7 +57,7 @@ gameShell state = do
         then do
             putStrLn "Game Over"
             putStrLn $ "The players' balances are " ++ (show $ balances state)
-            putStrLn $ "Player " ++ (show $ inTheLead state) ++ " wins"
+            putStrLn $ "Players " ++ (show $ inTheLead state) ++ " win"
         else do
             let (newState, msg) = shellCommand state cmd
             putStrLn msg
@@ -132,6 +133,13 @@ shellCommand s cmd = case cmd of
                 (s, "Frames: " ++ (show $ length s))
 
         -- MAKE A COMMAND TO DISPLAY THE NUMBER OF ROUNDS (CALCULATE OR STORE IT)
+    -- Analysis commands begin with a
+        -- Analyse the player's hand
+    "ah" ->
+                (s, "Your hand is a " ++ show ht ++ " of " ++ show htf)
+                    where (ht,htf) = bestHandType . concat $ map (\f-> f $ head s) [table, myCards]
+
+
     "h" ->
                 (s, help)
 
@@ -168,6 +176,9 @@ help = " \n\
 \   fb          Show players' balances \n\
 \   fa          Number of actions or frames \n\
 \ \n\
+\   -- Analysis commands begin with a \n\
+\   ah          Analyse the player's hand \n\
+\ \n\
 \   h           This help string \n\
 \ "
 
@@ -177,10 +188,9 @@ balances (f:_) = foldr extractBal [] $ players f
     where extractBal pl bs = (num pl, balance pl):bs
 
 
-    -- Determine the player currently in the lead
-inTheLead :: State -> Int
-inTheLead = fst . maximumBy cmpBal . balances
-    where cmpBal x y = compare (snd x) (snd y)
+    -- Determine the players currently in the lead
+inTheLead :: State -> [Int]
+inTheLead = map fst . last . groupBy ((==) `on` snd) . sortBy (compare `on` snd) . balances
 
 
     -- Set the number of players

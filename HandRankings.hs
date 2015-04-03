@@ -13,9 +13,10 @@
 --
 --   Sections:
 --       0 - Imports
---       1 - HandType Rankers
---       2 - HandType Instances Counters
---       3 - General Functions
+--       1 - Complete Rankers
+--       2 - Single HandType Rankers
+--       3 - HandType Instances Counters
+--       4 - General Functions
 --
 
 
@@ -32,7 +33,7 @@ import Data.Function (on)
 
 
 
----- 1 - HANDTYPE RANKERS ------------------------------------------------------
+---- 1 - COMPLETE RANKERS ------------------------------------------------------
 
     -- These rankers do not take any Suit hierarchy into account, therefore
     -- there are gaps in the ranks, which do not affect any process whatsoever.
@@ -65,6 +66,8 @@ rankHandType cs (ht,htf) = case ht of
     HighCard      -> rankHighCard      cs $ toV htf
 
 
+
+---- 2 - SINGLE HANDTYPE RANKERS -----------------------------------------------
 
     -- Given a RoyalFlush, return its rank among the existing ones
     -- NOTE: There are only 4, and are all equivalent (4/4)
@@ -151,6 +154,11 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 
 ---- 2 - HANDTYPE INSTANCES COUNTERS -------------------------------------------
 
+    -- NOTE: This section is the "long" and "wrong" way to get to these values,
+    -- but it was easy to set up as a working version.
+    -- The same functions can be done through the `choose` function.
+
+
     -- Cached result of: allHandTypesIn allCards
     -- NOTE: (sum $ map snd totHtsCounts) == (52 `choose` 5)
 totHtsCounts :: [(HandType,Int)]
@@ -168,7 +176,7 @@ totHtsCounts = [
     ]
 
 
-    -- Return the list of all HandTypes and how many "real " instances of each
+    -- Return the list of all HandTypes and how many "real" instances of each
     -- exist in a given set of cards , i.e. taking into account the fact that if
     -- some cards constitute more than one HandType, they should count only as
     -- the highest one
