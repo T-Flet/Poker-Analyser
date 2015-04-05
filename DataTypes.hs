@@ -28,6 +28,7 @@ import GeneralFunctions (descLength)
 
 import Data.List (sort, sortBy, groupBy)
 import Data.Char (toLower)
+import Data.Function (on)
 
 
 
@@ -108,7 +109,7 @@ suitGroups  = groupCardsBy suit  . sortBySuit
     -- by value or suit, respectively
 groupCardsBy :: Eq a => (Card -> a) -> [Card] -> [[Card]]
 groupCardsBy suitOrValue = sortBy descLength . groupBy eqField
-    where eqField c1 c2 = (suitOrValue c1) == (suitOrValue c2)
+    where eqField = (==) `on` suitOrValue
 
 
 

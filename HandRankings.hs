@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.3 - 02/04/2015
+--          0.4 - 04-05/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -15,8 +15,9 @@
 --       0 - Imports
 --       1 - Complete Rankers
 --       2 - Single HandType Rankers
---       3 - HandType Instances Counters
---       4 - General Functions
+--       3 - HandType Instances Calculators
+--       4 - HandType Instances Counters
+--       5 - General Functions
 --
 
 
@@ -27,9 +28,10 @@ module HandRankings where
 
 import DataTypes
 import HandTypeCheckers
-import GeneralFunctions (combinations)
+import GeneralFunctions (combinations, subsetOf, descLength)
 
 import Data.Function (on)
+import Data.List (groupBy, (\\), sortBy, sort)
 
 
 
@@ -152,11 +154,77 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 
 
 
----- 2 - HANDTYPE INSTANCES COUNTERS -------------------------------------------
+---- 3 - HANDTYPE INSTANCES CALCULATORS ----------------------------------------
+
+    -- Return the number of possible RoyalFlushes which can be formed by
+    -- completing the hand of the given cards and which cards are required
+countRoyalFlush :: [Card] -> (Int,[[Card]])
+countRoyalFlush cs
+    | cs == []           = (4, map (\s-> map (\v-> Card v s) ovs) $ enumFrom Spades)
+    | okVals && sameSuit = (1, [(map (\v-> Card v (suit $ head cs)) ovs) \\ cs])
+    | otherwise          = (0, [])
+        where okVals   = all ((`elem` ovs) . value) cs
+              sameSuit = length (groupBy ((==) `on` suit) cs) == 1
+              ovs = enumFrom Ten
+
+
+    -- Return the number of possible StraightFlushes which can be formed by
+    -- completing the hand of the given cards and which cards are required
+
+    --  WHAT ABOUT EMPTY LIST?
+countStraightFlush :: [Card] -> (Int,[[Card]])
+countStraightFlush cs
+    | okVals && sameSuit = (length possHands, map (\\ cs) possHands)
+    | otherwise          = (0, [])
+        where okVals   = length possHands > 0
+              sameSuit = length (groupBy ((==) `on` suit) cs) == 1
+              possHands = map (map (\v-> Card v (suit $ head cs))) $ filter ((map value cs) `subsetOf`) ovs
+              ovs = zipWith (\f t-> enumFromTo f t) (enumFromTo Two Ten) (enumFromTo Six Ace)
+
+
+    -- Return the number of possible FourOfAKinds which can be formed by
+    -- completing the hand of the given cards and which cards are required
+
+    --  WHAT ABOUT EMPTY LIST?
+countFourOfAKind :: [Card] -> (Int,[[Card]])
+countFourOfAKind cs
+    | okVals    = if (length h) == 1
+                    then (2, [(left h), left l])
+                    else (1, [left h])
+    | otherwise = (0, [])
+        where okVals = (length vgcs < 3) &&
+                        (if length vgcs == 2 then (length l) == 1 else True)
+              left vgc = (map (Card (value $ head vgc)) $ enumFrom Spades) \\ cs
+              (h,l) = (head vgcs, last vgcs)
+              vgcs = valueGroups cs
+
+
+    -- Return the number of possible FullHouses which can be formed by
+    -- completing the hand of the given cards and which cards are required
+
+    --  WHAT ABOUT EMPTY LIST?
+--countFullHouse :: [Card] -> (Int,[[Card]])
+--countFullHouse cs
+--    | okVals    = case length vgcs of
+--                    1 -> (12, )
+--                    2 -> if length h == 3
+--                            then (1, )
+--                            else (2, )
+--    | otherwise = (0, [])
+--        where okVals = (length vgcs < 3) &&
+--                        (length h < 4) &&
+--                        (if length vgcs == 2 then length l < 3 else True)
+--              (h,l) = (head vgcs, last vgcs)
+--              vgcs = valueGroups cs
+
+
+
+---- 4 - HANDTYPE INSTANCES COUNTERS -------------------------------------------
 
     -- NOTE: This section is the "long" and "wrong" way to get to these values,
     -- but it was easy to set up as a working version.
-    -- The same functions can be done through the `choose` function.
+    -- The same functions are be done through the `choose` function in the
+    -- HandType Instances Calculators section.
 
 
     -- Cached result of: allHandTypesIn allCards
@@ -213,7 +281,7 @@ handCombinations = intsLToCardsL . combinations 5 . cardsToInts
 
 
 
----- 3 - GENERAL FUNCTIONS -----------------------------------------------------
+---- 5 - GENERAL FUNCTIONS -----------------------------------------------------
 
     -- Given an N-Plet kind of hand, return its rank among the existing ones
 rankNPlet :: HandType -> [Card] -> Value -> Int

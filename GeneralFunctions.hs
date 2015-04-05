@@ -14,6 +14,7 @@
 --       0 - Imports
 --       1 - Mathematical Functions
 --       2 - Sorting and Grouping Functions
+--       3 - Set Related Functions
 --
 
 
@@ -67,3 +68,13 @@ groupBy' cmp (x:xs@(x':_))
     | cmp x x'   = (x:y):ys
     | otherwise  = [x]:r
         where r@(y:ys) = groupBy' cmp xs
+
+
+
+---- 3 - SET RELATED FUNCTIONS -------------------------------------------------
+
+    -- Check whether a set is a subset of a second set
+subsetOf :: (Eq a) => [a] -> [a] -> Bool
+a `subsetOf` b = all (`elem` b) a
+
+
