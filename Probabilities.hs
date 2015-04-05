@@ -85,7 +85,7 @@ probsToHand scs prs = Hand hT scs
 --              ---- WRONG: NOT CONSIDERING DISCARDED CARDS, DIFFERENT AT EACH TURN.
 --
 --              -- Number of required cards of the same suits
---          required = map (5-) . map length $ suitGroups scs
+--          required = map (5-) . map length $ suitDescGroups scs
 
 
 

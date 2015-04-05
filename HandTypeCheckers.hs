@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.1 - 28-29/03/2015
+--          0.2 - 05-06/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -24,10 +24,10 @@
 
 module HandTypeCheckers where
 
-import GeneralFunctions (descLength, groupBy')
+import GeneralFunctions (descLength, groupBy', subsetOf)
 import DataTypes
 
-import Data.List (sort, sortBy)
+import Data.List (sort, sortBy, group)
 import Data.Function (on)
 
 
@@ -98,7 +98,7 @@ isStraight cs = isLenType 5 value $ inOrder cs
 
     -- Returns the Suit of the Flush
 isFlush :: [Card] -> Maybe Suit
-isFlush cs = isLenType 5 suit $ suitGroups cs
+isFlush cs = isLenType 5 suit $ suitDescGroups cs
 
 
     -- Returns the Suit and the Value of the highest card in the StraightFlush
@@ -127,7 +127,7 @@ isRoyalFlush cs = case isStraightFlush cs of
 
     -- Check whether some cards constitute an N-plet (N=2 => Pair, ...)
 isNplet :: Int -> [Card] -> Maybe Value
-isNplet n cs = isLenType n value $ valueGroups cs
+isNplet n cs = isLenType n value $ valueDescGroups cs
 
 
     -- Check whether some cards constitute two N-plets (N=3 and 2 (or 2 and 3) => FullHouse, ...)
@@ -138,20 +138,41 @@ is2Nplet n m cs
                 then Just . map value . reverse $ sort [x,y]
                 else Just [value x, value y]
     | otherwise                        = Nothing
-        where xg@(x:_):yg@(y:_):_ = valueGroups cs
+        where xg@(x:_):yg@(y:_):_ = valueDescGroups cs
               [b,a] = sort [n,m]
 
 
     -- Return a list of lists of cards grouped if of consecutive values
+    -- NOTE: Caters for Aces being both lower than Twos and higher than Kings by
+    -- duplicating them
 inOrder :: [Card] -> [[Card]]
-inOrder cs = sortBy descLength . groupBy' (isPred `on` value) . reverse $ sort cs
-    where isPred v1 v2 = case v1 of
-            Two -> False
-            _   -> v2 == pred v1
+inOrder cs = sortBy descLength $ concat inOrder'
+    where inOrder' = [map (map head) pgvgs] ++ (singleCards $ map (map tail) pgvgs)
+          singleCards = map group . concat . noNull . map noNull
+          noNull = filter (not . null)
+
+          pgvgs :: [[[Card]]]
+          pgvgs
+            | [Ace, Two] `subsetOf` values = (init pgvgs') ++ [last pgvgs' ++ [[head aces]]] ++ tailAces
+            | otherwise = pgvgs'
+
+          values = map (value . head) vgs
+          tailAces
+            | length aces > 1 = [[tail aces]]
+            | otherwise       = []
+          aces = head vgs
+
+          pgvgs' :: [[[Card]]]
+          pgvgs' = groupBy' (isPred `on` (value . head)) vgs
+          vgs = valueGroups cs
+          isPred v1 v2 = case v1 of
+                Two -> False
+                _   -> v2 == pred v1
 
 
     -- Given a list of lists of cards, return the suit or value of the first
-    -- list in it if its length is greater than or equal to n
+    -- element in the first list in it if the given list's length is greater
+    -- than or equal to n
 isLenType :: Int -> (Card -> a) -> [[Card]] -> Maybe a
 isLenType n suitOrValue cs
     | length hcs >= n = Just . suitOrValue $ head hcs

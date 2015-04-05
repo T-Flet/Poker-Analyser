@@ -156,11 +156,13 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 
 ---- 3 - HANDTYPE INSTANCES CALCULATORS ----------------------------------------
 
+    -- NOTE: These functions do not necessarily cater for a null input
+
     -- Return the number of possible RoyalFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
 countRoyalFlush :: [Card] -> (Int,[[Card]])
 countRoyalFlush cs
-    | cs == []           = (4, map (\s-> map (\v-> Card v s) ovs) $ enumFrom Spades)
+--    | null cs            = (4, map (\s-> map (\v-> Card v s) ovs) $ enumFrom Spades)
     | okVals && sameSuit = (1, [(map (\v-> Card v (suit $ head cs)) ovs) \\ cs])
     | otherwise          = (0, [])
         where okVals   = all ((`elem` ovs) . value) cs
@@ -170,24 +172,22 @@ countRoyalFlush cs
 
     -- Return the number of possible StraightFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
-
-    --  WHAT ABOUT EMPTY LIST?
 countStraightFlush :: [Card] -> (Int,[[Card]])
 countStraightFlush cs
+--    | null cs            = (40, concat . map (\s-> map (map (\v->Card v s)) ovs) $ enumFrom Spades)
     | okVals && sameSuit = (length possHands, map (\\ cs) possHands)
     | otherwise          = (0, [])
         where okVals   = length possHands > 0
-              sameSuit = length (groupBy ((==) `on` suit) cs) == 1
+              sameSuit = length (suitDescGroups cs) == 1
               possHands = map (map (\v-> Card v (suit $ head cs))) $ filter ((map value cs) `subsetOf`) ovs
-              ovs = zipWith (\f t-> enumFromTo f t) (enumFromTo Two Ten) (enumFromTo Six Ace)
+              ovs = (:) ((:) Ace $ enumFromTo Two Five) $ zipWith (\f t-> enumFromTo f t) (enumFromTo Two Ten) (enumFromTo Six Ace)
 
 
     -- Return the number of possible FourOfAKinds which can be formed by
     -- completing the hand of the given cards and which cards are required
-
-    --  WHAT ABOUT EMPTY LIST?
 countFourOfAKind :: [Card] -> (Int,[[Card]])
 countFourOfAKind cs
+--    | null cs   = (13, map (\v-> map (Card v) $ enumFrom Spades) $ enumFrom Two)
     | okVals    = if (length h) == 1
                     then (2, [(left h), left l])
                     else (1, [left h])
@@ -196,15 +196,14 @@ countFourOfAKind cs
                         (if length vgcs == 2 then (length l) == 1 else True)
               left vgc = (map (Card (value $ head vgc)) $ enumFrom Spades) \\ cs
               (h,l) = (head vgcs, last vgcs)
-              vgcs = valueGroups cs
+              vgcs = valueDescGroups cs
 
 
     -- Return the number of possible FullHouses which can be formed by
     -- completing the hand of the given cards and which cards are required
-
-    --  WHAT ABOUT EMPTY LIST?
 --countFullHouse :: [Card] -> (Int,[[Card]])
 --countFullHouse cs
+----    | null cs   = (13*12, concat . map (\x y-> [[x,x,x,y,y],[y,y,y,x,x])) . ...
 --    | okVals    = case length vgcs of
 --                    1 -> (12, )
 --                    2 -> if length h == 3
@@ -215,7 +214,7 @@ countFourOfAKind cs
 --                        (length h < 4) &&
 --                        (if length vgcs == 2 then length l < 3 else True)
 --              (h,l) = (head vgcs, last vgcs)
---              vgcs = valueGroups cs
+--              vgcs = valueDescGroups cs
 
 
 

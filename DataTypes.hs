@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.6 - 27-28/03/2015
+--          0.7 - 05-06/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -54,20 +54,39 @@ instance Enum Card where
         s <- enumFrom $ (minBound :: Suit), v <- enumFrom $ (minBound :: Value)]
 -- All the other Enum functions are automatically derived from toEnum and fromEnum
 
+data CardSet = CC Int [Card] | CV Int Value | CS Int Suit | CN
+            | CA CardSet CardSet | CO CardSet CardSet | CX CardSet CardSet
+                deriving (Eq)
+instance Show CardSet where
+    show (CC 1 x) = "Any 1 of " ++ show x
+    show (CC n x) = show n ++ " of " ++ show x
+    show (CV 1 x) = "Any 1 " ++ show x
+    show (CV n x) = "Any " ++ show n ++ " " ++ show x ++ "s"
+    show (CS 1 x) = "Any 1 " ++ (init $ show x)
+    show (CS n x) = "Any " ++ show n ++ " " ++ show x
+    show CN       = "No Cards"
+
+    show (CA c1 c2) = "Both "   ++ show c1 ++ " and " ++ show c2
+    show (CO c1 c2) = "Either " ++ show c1 ++ " or "  ++ show c2
+    show (CX c1 c2) = "Just one of " ++ show c1 ++ " xor " ++ show c2
+
+
+
+--- Functions ---
+
     -- List of all Cards
 allCards = enumFrom $ Card Two Spades
+
 
     -- Transform a list of lists of integers in [0..51] into the same for Cards
 intsLToCardsL :: [[Int]] -> [[Card]]
 intsLToCardsL = map (map toEnum)
 
+
     -- Transform a list of Cards into a list of Integers
 cardsToInts :: [Card] -> [Int]
 cardsToInts = map fromEnum
 
-
-
---- Functions ---
 
     -- Sort cards by suit first (as in deck order)
 sortBySuit :: [Card] -> [Card]
@@ -100,16 +119,26 @@ toCard uVS
                     'd' -> Diamonds ; 'h' -> Hearts
 
 
-    -- Group cards by value and by suit
-valueGroups, suitGroups :: [Card] -> [[Card]]
+    -- Group cards by value and by suit and sort the groups,
+    -- sorted by descending group length and not
+valueDescGroups, suitDescGroups, valueGroups, suitGroups :: [Card] -> [[Card]]
+valueDescGroups = sortBy descLength . valueGroups
+suitDescGroups  = sortBy descLength . suitGroups
 valueGroups = groupCardsBy value . sort
 suitGroups  = groupCardsBy suit  . sortBySuit
 
-    -- Group cards by value or suit assuming they are already sorted
+
+    -- Group cards by descending value or suit assuming they are already sorted
     -- by value or suit, respectively
 groupCardsBy :: Eq a => (Card -> a) -> [Card] -> [[Card]]
-groupCardsBy suitOrValue = sortBy descLength . groupBy eqField
-    where eqField = (==) `on` suitOrValue
+groupCardsBy suitOrValue = groupBy ((==) `on` suitOrValue) . reverse
+
+
+    -- Transform a CardSet into its equivalent list of Cards
+--fromCardSet :: CardSet -> [Card]
+--fromCardSet (CC x) =
+--fromCardSet (CV x) =
+--fromCardSet (CS x) =
 
 
 
