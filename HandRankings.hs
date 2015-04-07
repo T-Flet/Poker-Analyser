@@ -48,6 +48,13 @@ cmpHands :: [Card] -> [Card] -> Ordering
 cmpHands = compare `on` rankHand
 
 
+    -- Given two sets of cards (preferably of 5 cards each, i.e. hands) return
+    -- whether they are equal by evaluating what HandType they constitute and
+    -- ranking them
+eqHands :: [Card] -> [Card] -> Bool
+eqHands = (==) `on` rankHand
+
+
     -- Given any set of 5 cards (hand), return its rank
 rankHand :: [Card] -> Int
 rankHand cs = rankHandType cs $ bestHandType cs

@@ -54,12 +54,14 @@ instance Enum Card where
         s <- enumFrom $ (minBound :: Suit), v <- enumFrom $ (minBound :: Value)]
 -- All the other Enum functions are automatically derived from toEnum and fromEnum
 
-data CardSet = CC Int [Card] | CV Int Value | CS Int Suit | CN
-            | CA CardSet CardSet | CO CardSet CardSet | CX CardSet CardSet
+data CardSet = CC Int [Card] | CB Int (Value,Value) | CV Int Value | CS Int Suit
+            | CN | CA CardSet CardSet | CO CardSet CardSet | CX CardSet CardSet
                 deriving (Eq)
 instance Show CardSet where
     show (CC 1 x) = "Any 1 of " ++ show x
     show (CC n x) = show n ++ " of " ++ show x
+    show (CB 1 (f,l)) = "Any 1 between " ++ show f ++ " and " ++ show l
+    show (CB n (f,l)) = show n ++ " between " ++ show f ++ " and " ++ show l
     show (CV 1 x) = "Any 1 " ++ show x
     show (CV n x) = "Any " ++ show n ++ " " ++ show x ++ "s"
     show (CS 1 x) = "Any 1 " ++ (init $ show x)
@@ -135,10 +137,11 @@ groupCardsBy suitOrValue = groupBy ((==) `on` suitOrValue) . reverse
 
 
     -- Transform a CardSet into its equivalent list of Cards
---fromCardSet :: CardSet -> [Card]
---fromCardSet (CC x) =
---fromCardSet (CV x) =
---fromCardSet (CS x) =
+fromCardSet :: CardSet -> [Card]
+fromCardSet (CC n cs) = cs
+fromCardSet (CB n (f,l)) = concat . map (\v-> map (Card v) $ enumFrom Spades) $ enumFromTo f l
+fromCardSet (CV n v)  = map (\s-> Card v s) $ enumFrom Spades
+fromCardSet (CS n s)  = enumFromTo (Card Two s) (Card Ace s)
 
 
 

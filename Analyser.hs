@@ -139,6 +139,8 @@ shellCommand s cmd = case cmd of
                 (s, "Your hand is a " ++ show ht ++ " of " ++ show htf)
                     where (ht,htf) = bestHandType . concat $ map (\f-> f $ head s) [table, myCards]
 
+--    "re" ->
+--                roundEnd s
 
     "h" ->
                 (s, help)
@@ -178,6 +180,8 @@ help = " \n\
 \ \n\
 \   -- Analysis commands begin with a \n\
 \   ah          Analyse the player's hand \n\
+\ \n\
+\   re          Round End \n\
 \ \n\
 \   h           This help string \n\
 \ "
@@ -251,6 +255,16 @@ plBets s@(f:_) act x a = newFrame s [("action", FA nAct), ("players", FP nPls)]
                       nPlt = ((onPlate pl) + a)
 
                       pPPlt = onPlate . head . filter ((== (x-1) `mod` (playersNum f)) . num) $ players f
+
+
+    -- Determine the round winners, clear the hands and table of cards and of
+    -- fiches (giving them to the winners), and, depending on how the game is
+    -- played, either put them back into the deck or not.
+    -- Mention the player(s) in the lead
+--roundEnd :: State -> (State,String)
+--roundEnd s@(f:_) = (nf:s, "Round winner(s) and prize(s): " ++ show winnersPrizes ++ ".\nPlayer(s) in the lead: " ++ show (inTheLead [nf]))
+--    where winnersPrizes = map (\p-> )
+--          winners = head . groupBy eqHands . sortBy cmpHands . map hand . filter ((`notElem` [Fold, Out]) . status) $ players f
 
 
 
