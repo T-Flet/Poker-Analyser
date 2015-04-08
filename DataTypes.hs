@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.7 - 05-06/04/2015
+--          0.8 - 07-08/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -105,8 +105,8 @@ sortBySuit cs = sortBy cmpSui cs
 
     -- Maybe get a card from a pair of value and suit characters
     -- NOTE: Did not make this a Read instance because I need the Maybe
-toCard :: [Char] -> Maybe Card
-toCard uVS
+fromFCard :: [Char] -> Maybe Card
+fromFCard uVS
     | vsMatch = Just $ Card val sui
     | otherwise = Nothing
         where vsMatch = v `elem` "234567891jqka" && s `elem` "scdh"
@@ -151,7 +151,7 @@ data HandType = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight | Flush
             | FullHouse | FourOfAKind | StraightFlush | RoyalFlush
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
 
-data Hand = Hand {hKind :: HandType, cards :: [Card]}
+data Hand = Hand {hKind :: HandType, rank :: Int, cards :: [Card]}
                 deriving (Eq, Ord, Show)
 
 data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit]}
@@ -191,15 +191,23 @@ data Action = GameStart | SetPlayers Int | SetDealer Int | Discard Int
                 | RoundEnd | GameEnd Int
                 deriving (Eq, Ord, Show)
 
-data Player = Player {num :: Int, balance :: Int, onPlate :: Int, status :: Action}
+data Player = Player {num :: Int, balance :: Int, onPlate :: Int, status :: Action,
+                        hisCards :: [Card], hisHand :: Hand}
                 deriving (Eq, Ord)
     -- EVENTUALLY INTRODUCE STATISTICS TRACKING IN HERE
 instance Show Player where
     show pl = concat [  "\n",
-                        "\tPlayer: ",   show $ num pl,
-                        ", Balance: ",  show $ balance pl,
-                        ", Bet: ",      show $ onPlate pl,
-                        ", Status: ",   show $ status pl]
+                        "\tPlayer: ",  show $ num pl,
+                        ", Balance: ", show $ balance pl,
+                        ", Bet: ",     show $ onPlate pl,
+                        ", Status: ",  show $ status pl,
+                        "\n\t",
+                        "\tCards: ",   show $ hisCards pl,
+                        "\n\t",
+                        "\tHand: ",    show $ hisHand pl]
+
+data PlayerField = PI Int | PA Action | PC [Card] | PH Hand
+                deriving (Eq, Show)
 
 data Frame = Frame {action :: Action, playersNum :: Int, dealer :: Int,
                     cardsInDeck :: Int, table :: [Card], myCards :: [Card],
@@ -218,7 +226,6 @@ instance Show Frame where
                         ("Amount on plate: ",   show . plate),
                         ("Players' Status: ",   show . players) ]
 
-
 data FrameField = FA Action | FI Int | FC [Card] | FP [Player]
                 deriving (Eq, Show)
 
@@ -228,14 +235,26 @@ type State = [Frame]
 
 --- Functions ---
 
-    -- Value Extractors
-toA (FA x) = x
-toI (FI x) = x
-toC (FC x) = x
-toP (FP x) = x
+    -- Player Value Extractors
+fromPI (PI x) = x
+fromPA (PA x) = x
+fromPC (PC x) = x
+fromPH (PH x) = x
 
 
-    -- Starting state
+    -- Field Value Extractors
+fromFA (FA x) = x
+fromFI (FI x) = x
+fromFC (FC x) = x
+fromFP (FP x) = x
+
+
+    -- Starting Player
+initialPlayer :: Int -> Player
+initialPlayer nu = Player nu 0 0 Idle [] (Hand HighCard 0 [])
+
+
+    -- Starting State
 initialState :: State
 initialState = [Frame GameStart 0 0 52 [] [] 0 []]
 

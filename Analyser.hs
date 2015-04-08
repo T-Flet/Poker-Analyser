@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.19 - 23-24/03/2015
+--          0.20 - 07-08/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -32,7 +32,7 @@
 import DataTypes
 import HandTypeCheckers
 import HandRankings
-import Probabilities
+--import Probabilities
 
 import Data.List (sort, sortBy, groupBy, maximumBy, group)
 import qualified Data.Map as M (lookup, fromList)
@@ -91,6 +91,10 @@ shellCommand s cmd = case cmd of
     ('p':x:'r':' ':a) ->
                 (plBets s Raise (read [x] :: Int) (read a :: Int),
                     "Player " ++ [x] ++ " raised " ++ a)
+
+        -- Player x reveals his Cards
+    --('p':x:'c':' ':v1:s1:' ':v2:s2:_) ->
+    --            plRevealsHand s [[v1,s1],[v2,s2]]
 
         -- Back one action
     "b" ->
@@ -163,6 +167,8 @@ help = " \n\
 \   p<Int>b <Int>   Player x Bets amount (or Raises, but reporting the bet) \n\
 \   p<Int>r <Int>   Player x Raises by amount \n\
 \ \n\
+\   p<Int>c <value><suit>(x2)   Player x reveals his hand \n\
+\ \n\
 \   b               Back one action \n\
 \ \n\
 \   -- Card related commands start with p \n\
@@ -200,7 +206,7 @@ inTheLead = map fst . last . groupBy ((==) `on` snd) . sortBy (compare `on` snd)
     -- Set the number of players
 setPlayers :: State -> Int -> State
 setPlayers s n = newFrame s [("action", FA (SetPlayers n)), ("playersNum", FI n), ("players", FP pls)]
-    where pls = map (\nu-> Player nu 0 0 Idle) [1..n]
+    where pls = map initialPlayer [1..n]
 
 
     -- Set the player x (x after the actual player) to be the dealer
@@ -235,7 +241,7 @@ plFolds :: State -> Int -> State
 plFolds s@(f:_) x = newFrame s [("action", FA (Fold x)), ("players", FP nPls)]
     where nPls = map plStatus (players f)
           plStatus pl
-            | num pl == x = Player x (balance pl) (onPlate pl) (Fold x)
+            | num pl == x = Player x (balance pl) (onPlate pl) (Fold x) (hisCards pl) (hisHand pl)
             | otherwise   = pl
 
 
@@ -248,8 +254,8 @@ plBets s@(f:_) act x a = newFrame s [("action", FA nAct), ("players", FP nPls)]
           nAct = act x a
           plStatus pl = if num pl == x
             then case nAct of
-                Bet _ _   -> Player x nBal nPlt nAct
-                Raise _ _ -> Player x (nBal-pPPlt) (nPlt+pPPlt) nAct
+                Bet _ _   -> Player x nBal nPlt nAct (hisCards pl) (hisHand pl)
+                Raise _ _ -> Player x (nBal-pPPlt) (nPlt+pPPlt) nAct (hisCards pl) (hisHand pl)
             else pl
                 where nBal = ((balance pl) - a)
                       nPlt = ((onPlate pl) + a)
@@ -257,31 +263,54 @@ plBets s@(f:_) act x a = newFrame s [("action", FA nAct), ("players", FP nPls)]
                       pPPlt = onPlate . head . filter ((== (x-1) `mod` (playersNum f)) . num) $ players f
 
 
-    -- Determine the round winners, clear the hands and table of cards and of
+    -- Player x reveals his hand
+--plRevealsHand :: State -> (State,String)
+--plRevealsHand s@(f:_) =
+
+
+    -- Determine the round winners, clear all hands and table of cards and of
     -- fiches (giving them to the winners), and, depending on how the game is
     -- played, either put them back into the deck or not.
     -- Mention the player(s) in the lead
 --roundEnd :: State -> (State,String)
 --roundEnd s@(f:_) = (nf:s, "Round winner(s) and prize(s): " ++ show winnersPrizes ++ ".\nPlayer(s) in the lead: " ++ show (inTheLead [nf]))
---    where winnersPrizes = map (\p-> )
---          winners = head . groupBy eqHands . sortBy cmpHands . map hand . filter ((`notElem` [Fold, Out]) . status) $ players f
+--    where winnersPrizes = map (\p-> (p,prize)) -- ADD SPLIT POTS ETC HERE!!!!!!!!!!
+--          prize = (plate f) / (length winners)
+--          winners = head . groupBy eqPlHands . sortBy cmpPlHands . filter inRound $ players f
+--          inRound = (`notElem` [Fold, Out]) . status
+--          cmpPlHands = cmpHands `on` (cards . hisHand)
+--          eqPlHands = eqHands `on` (cards . hisHand)
 
 
 
 ---- 3 - SHELL DATA MANIPULATION FUNCTIONS -------------------------------------
 
+newPlayer :: Player -> [(String, PlayerField)] -> Player
+newPlayer pl fieldList = (Player no ba op st cs hh)
+    where no = newField num      fromPI "num"
+          ba = newField balance  fromPI "balance"
+          op = newField onPlate  fromPI "onPlate"
+          st = newField status   fromPA "status"
+          cs = newField hisCards fromPC "hisCards"
+          hh = newField hisHand  fromPH "hisHand"
+
+          newField :: (Player -> a) -> (PlayerField -> a) -> String -> a
+          newField field extractor key =
+                maybe (field pl) extractor . M.lookup key $ M.fromList fieldList
+
+
     -- Add a new Frame to the State by providing only the fields which change
     -- with respect to the previous one
 newFrame :: State -> [(String, FrameField)] -> State
 newFrame s@(f:_) fieldList = (Frame act plN dea dCN tab mCs plt pls):s
-    where act = newField action      toA "action"
-          plN = newField playersNum  toI "playersNum"
-          dea = newField dealer      toI "dealer"
-          dCN = newField cardsInDeck toI "cardsInDeck"
-          tab = newField table       toC "table"
-          mCs = newField myCards     toC "myCards"
-          plt = newField plate       toI "plate"
-          pls = newField players     toP "players"
+    where act = newField action      fromFA "action"
+          plN = newField playersNum  fromFI "playersNum"
+          dea = newField dealer      fromFI "dealer"
+          dCN = newField cardsInDeck fromFI "cardsInDeck"
+          tab = newField table       fromFC "table"
+          mCs = newField myCards     fromFC "myCards"
+          plt = newField plate       fromFI "plate"
+          pls = newField players     fromFP "players"
 
           newField :: (Frame -> a) -> (FrameField -> a) -> String -> a
           newField field extractor key =
@@ -292,7 +321,7 @@ newFrame s@(f:_) fieldList = (Frame act plN dea dCN tab mCs plt pls):s
     -- Turn or River
 cardHandler :: State -> ([Card] -> Action) -> [String] -> (State,String)
 cardHandler s act sCs = maybe (s, "Cards have been mistyped") actFunc mCs
-    where mCs = sequence $ map toCard sCs
+    where mCs = sequence $ map fromFCard sCs
           actFunc = case act [] of
                         StartHand _ -> (\cs -> (startHand s cs,
                                         "Starting hand added: " ++ (show cs)) )
