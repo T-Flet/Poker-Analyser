@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.20 - 07-08/04/2015
+--          0.21 - 09/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -34,7 +34,7 @@ import HandTypeCheckers
 import HandRankings
 --import Probabilities
 
-import Data.List (sort, sortBy, groupBy, maximumBy, group)
+import Data.List (sort, sortBy, groupBy, maximumBy, group, partition)
 import qualified Data.Map as M (lookup, fromList)
 import Data.Function (on)
 
@@ -93,8 +93,8 @@ shellCommand s cmd = case cmd of
                     "Player " ++ [x] ++ " raised " ++ a)
 
         -- Player x reveals his Cards
-    --('p':x:'c':' ':v1:s1:' ':v2:s2:_) ->
-    --            plRevealsHand s [[v1,s1],[v2,s2]]
+    ('p':x:'c':' ':v1:s1:' ':v2:s2:_) ->
+                plRevealsHand s (read [x] :: Int) [[v1,s1],[v2,s2]]
 
         -- Back one action
     "b" ->
@@ -200,7 +200,7 @@ balances (f:_) = foldr extractBal [] $ players f
 
     -- Determine the players currently in the lead
 inTheLead :: State -> [Int]
-inTheLead = map fst . last . groupBy ((==) `on` snd) . sortBy (compare `on` snd) . balances
+inTheLead = sort . map fst . last . groupBy ((==) `on` snd) . sortBy (compare `on` snd) . balances
 
 
     -- Set the number of players
@@ -264,8 +264,14 @@ plBets s@(f:_) act x a = newFrame s [("action", FA nAct), ("players", FP nPls)]
 
 
     -- Player x reveals his hand
---plRevealsHand :: State -> (State,String)
---plRevealsHand s@(f:_) =
+plRevealsHand :: State -> Int -> [String] -> (State,String)
+plRevealsHand s@(f:_) x sCs = case sequence $ map toCard sCs of
+    Nothing -> (s, "Cards have been mistyped")
+    Just cs -> (newFrame s [("players", FP (np:ps))], "Player " ++ show x ++ " reveals " ++ show cs)
+        where np = Player x (balance p) (onPlate p) (status p) cs npH
+              npH = Hand ht (rankHandType cs htf) cs
+              htf@(ht,_) = bestHandType cs
+              ([p],ps) = partition ((==x) . num) $ players f
 
 
     -- Determine the round winners, clear all hands and table of cards and of
@@ -321,7 +327,7 @@ newFrame s@(f:_) fieldList = (Frame act plN dea dCN tab mCs plt pls):s
     -- Turn or River
 cardHandler :: State -> ([Card] -> Action) -> [String] -> (State,String)
 cardHandler s act sCs = maybe (s, "Cards have been mistyped") actFunc mCs
-    where mCs = sequence $ map fromFCard sCs
+    where mCs = sequence $ map toCard sCs
           actFunc = case act [] of
                         StartHand _ -> (\cs -> (startHand s cs,
                                         "Starting hand added: " ++ (show cs)) )

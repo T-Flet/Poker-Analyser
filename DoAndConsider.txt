@@ -22,6 +22,8 @@
 
 ---- 1 - TO DO -----------------------------------------------------------------
 
+    MAKE HANDTYPECHECKERS ALSO RETURN THE 5 CARDS CONSTITUTING THE HANDTYPE
+
     WORK ON roundEnd and plRevealsHand
 
     PERHAPS RECONSIDER THE WHOLE CardSet INSTEAD OF [Card] RETURN TYPE OF count
@@ -90,8 +92,6 @@
 
     THE FACT THAT THE FIRST VALUE IN THE TUPLE RETURNED BY countANYHANDTYPE ARE
     JUST THE LENGTH OF THE SECOND VALUE... PERHAPS REMOVE IT?
-
-    MAKE HANDTYPECHECKERS ALSO RETURN THE 5 CARDS CONSTITUTING THE HANDTYPE
 
     WHETHER Hand SHOULD BE IN RECORD NOTATION OR A SIMPLE ADT, SO AS TO ALLOW
     NICE INSTANCES OF Eq, Ord, ETC BY USING THE HAND RANKING FUNCTIONS
@@ -182,17 +182,13 @@
 
 ---- 4 - TESTING DATA ----------------------------------------------------------
 
-let a = [Card King Spades, Card Queen Hearts, Card Jack Clubs]
-let b = [Card Three Spades, Card Seven Hearts, Card Eight Diamonds]
-let Just c = sequence $ map toCard ["ks", "qh", "jd", "1c", "kh", "ks", "qd"]
-let Just d = sequence $ map toCard ["3h", "5c", "ks", "1s", "2d", "ah", "9d"]
+let Just a = sequence $ map toCard ["ks", "qh", "jd", "1c", "kh", "ks", "qd"]
+let Just b = sequence $ map toCard ["3h", "5c", "ks", "1s", "2d", "ah", "9d"]
 
-let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
-let h = probsToHand (sort a) (reverse $ sort b)
-
-let pls = [Player 1 50 10 (Fold 1), Player 2 300 30 (Bet 2 30), Player 3 200 50 (Raise 3 50)]
+let pls = [Player 1 50 10 (Fold 1) [] (Hand HighCard 0 []), Player 2 300 30 (Bet 2 30) [] (Hand HighCard 0 []), Player 3 200 50 (Raise 3 50) [] (Hand HighCard 0 [])]
 let fr = Frame (Discard 3) 4 2 40 a b 0 pls
 let fl = [("action", FA (Fold 2)), ("dealer", FI 3)]
 let ss = newFrame [fr] fl
-let ss = [Frame {action = Fold 2, playersNum = 4, dealer = 3, cardsInDeck = 40, table = [Card {value = King, suit = Spades},Card {value = Queen, suit = Hearts},Card {value = Jack, suit = Clubs}], myCards = [Card {value = Three, suit = Spades},Card {value = Seven, suit = Hearts},Card {value = Eight, suit = Diamonds}], plate = 0, players = [Player {num = 1, balance = 50, onPlate = 10, status = Fold 1},Player {num = 2, balance = 300, onPlate = 30, status = Bet 2 30},Player {num = 3, balance = 200, onPlate = 50, status = Raise 3 50}]},Frame {action = Discard 3, playersNum = 4, dealer = 2, cardsInDeck = 40, table = [Card {value = King, suit = Spades},Card {value = Queen, suit = Hearts},Card {value = Jack, suit = Clubs}], myCards = [Card {value = Three, suit = Spades},Card {value = Seven, suit = Hearts},Card {value = Eight, suit = Diamonds}], plate = 0, players = [Player {num = 1, balance = 50, onPlate = 10, status = Fold 1},Player {num = 2, balance = 300, onPlate = 30, status = Bet 2 30},Player {num = 3, balance = 200, onPlate = 50, status = Raise 3 50}]}]
 
+let h = probsToHand (sort a) (reverse $ sort b)
+let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]

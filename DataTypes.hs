@@ -119,8 +119,8 @@ sortBySuit cs = sortBy cmpSui cs
 
     -- Maybe get a card from a pair of value and suit characters
     -- NOTE: Did not make this a Read instance because I need the Maybe
-fromFCard :: [Char] -> Maybe Card
-fromFCard uVS
+toCard :: [Char] -> Maybe Card
+toCard uVS
     | vsMatch = Just $ Card val sui
     | otherwise = Nothing
         where vsMatch = v `elem` "234567891jqka" && s `elem` "scdh"
