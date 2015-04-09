@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.8 - 07-08/04/2015
+--          0.9 - 08-09/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -38,8 +38,10 @@ data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
             | Jack | Queen | King | Ace
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
 
+
 data Suit = Spades | Clubs | Diamonds | Hearts
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
+
 
 data Card = Card {value :: Value, suit :: Suit}
                 deriving (Eq, Ord)
@@ -50,9 +52,10 @@ instance Enum Card where
     fromEnum c = (fromEnum $ value c) + ((*13) . fromEnum $ suit c)
         -- This enumFrom is in deck order (suit first), while actual card
         -- comparison is by value first
-    enumFrom c = dropWhile (<c) [Card v s |
-        s <- enumFrom $ (minBound :: Suit), v <- enumFrom $ (minBound :: Value)]
+    enumFrom c = dropWhile (<c) . concat $
+        fromSuiVal (enumFrom $ (minBound :: Suit)) (enumFrom $ (minBound :: Value))
 -- All the other Enum functions are automatically derived from toEnum and fromEnum
+
 
 data CardSet = CC Int [Card] | CB Int (Value,Value) | CV Int Value | CS Int Suit
             | CN | CA CardSet CardSet | CO CardSet CardSet | CX CardSet CardSet
@@ -60,13 +63,14 @@ data CardSet = CC Int [Card] | CB Int (Value,Value) | CV Int Value | CS Int Suit
 instance Show CardSet where
     show (CC 1 x) = "Any 1 of " ++ show x
     show (CC n x) = show n ++ " of " ++ show x
-    show (CB 1 (f,l)) = "Any 1 between " ++ show f ++ " and " ++ show l
-    show (CB n (f,l)) = show n ++ " between " ++ show f ++ " and " ++ show l
     show (CV 1 x) = "Any 1 " ++ show x
     show (CV n x) = "Any " ++ show n ++ " " ++ show x ++ "s"
     show (CS 1 x) = "Any 1 " ++ (init $ show x)
     show (CS n x) = "Any " ++ show n ++ " " ++ show x
     show CN       = "No Cards"
+
+    show (CB 1 (f,l)) = "Any 1 between " ++ show f ++ " and " ++ show l
+    show (CB n (f,l)) = show n ++ " between " ++ show f ++ " and " ++ show l
 
     show (CA c1 c2) = "Both "   ++ show c1 ++ " and " ++ show c2
     show (CO c1 c2) = "Either " ++ show c1 ++ " or "  ++ show c2
@@ -88,6 +92,16 @@ intsLToCardsL = map (map toEnum)
     -- Transform a list of Cards into a list of Integers
 cardsToInts :: [Card] -> [Int]
 cardsToInts = map fromEnum
+
+
+	-- Generate a list of lists of Cards from lists of Suits and Values in this order
+fromSuiVal :: [Suit] -> [Value] -> [[Card]]
+fromSuiVal ss vs = [[Card v s | v <- vs] | s <- ss]
+
+
+	-- Generate a list of lists of Cards from lists of Values and Suits in this order
+fromValSui :: [Value] -> [Suit] -> [[Card]]
+fromValSui vs ss = [[Card v s | s <- ss] | v <- vs]
 
 
     -- Sort cards by suit first (as in deck order)
@@ -139,8 +153,8 @@ groupCardsBy suitOrValue = groupBy ((==) `on` suitOrValue) . reverse
     -- Transform a CardSet into its equivalent list of Cards
 fromCardSet :: CardSet -> [Card]
 fromCardSet (CC n cs) = cs
-fromCardSet (CB n (f,l)) = concat . map (\v-> map (Card v) $ enumFrom Spades) $ enumFromTo f l
-fromCardSet (CV n v)  = map (\s-> Card v s) $ enumFrom Spades
+fromCardSet (CB n (f,l)) = concat $ fromValSui (enumFromTo f l) (enumFrom Spades)
+fromCardSet (CV n v)  = head . fromValSui [v] $ enumFrom Spades
 fromCardSet (CS n s)  = enumFromTo (Card Two s) (Card Ace s)
 
 
@@ -151,8 +165,10 @@ data HandType = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight | Flush
             | FullHouse | FourOfAKind | StraightFlush | RoyalFlush
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
 
+
 data Hand = Hand {hKind :: HandType, rank :: Int, cards :: [Card]}
                 deriving (Eq, Ord, Show)
+
 
 data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit]}
                 deriving (Eq, Ord, Show)
@@ -191,6 +207,7 @@ data Action = GameStart | SetPlayers Int | SetDealer Int | Discard Int
                 | RoundEnd | GameEnd Int
                 deriving (Eq, Ord, Show)
 
+
 data Player = Player {num :: Int, balance :: Int, onPlate :: Int, status :: Action,
                         hisCards :: [Card], hisHand :: Hand}
                 deriving (Eq, Ord)
@@ -206,8 +223,10 @@ instance Show Player where
                         "\n\t",
                         "\tHand: ",    show $ hisHand pl]
 
+
 data PlayerField = PI Int | PA Action | PC [Card] | PH Hand
                 deriving (Eq, Show)
+
 
 data Frame = Frame {action :: Action, playersNum :: Int, dealer :: Int,
                     cardsInDeck :: Int, table :: [Card], myCards :: [Card],
@@ -226,8 +245,10 @@ instance Show Frame where
                         ("Amount on plate: ",   show . plate),
                         ("Players' Status: ",   show . players) ]
 
+
 data FrameField = FA Action | FI Int | FC [Card] | FP [Player]
                 deriving (Eq, Show)
+
 
 type State = [Frame]
 

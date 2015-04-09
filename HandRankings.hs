@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.4 - 04-05/04/2015
+--          0.5 - 08-09/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -31,7 +31,7 @@ import HandTypeCheckers
 import GeneralFunctions (combinations, subsetOf, descLength)
 
 import Data.Function (on)
-import Data.List (groupBy, (\\), sortBy, sort)
+import Data.List (groupBy, (\\), sortBy, sort, tails)
 
 
 
@@ -169,8 +169,8 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
     -- completing the hand of the given cards and which cards are required
 countRoyalFlush :: [Card] -> (Int,[[Card]])
 countRoyalFlush cs
---    | null cs            = (4, map (\s-> map (\v-> Card v s) ovs) $ enumFrom Spades)
-    | okVals && sameSuit = (1, [(map (\v-> Card v (suit $ head cs)) ovs) \\ cs])
+--    | null cs            = (4, fromSuiVal (enumFrom Spades) ovs)
+    | okVals && sameSuit = (1, [(head $ fromSuiVal [suit $ head cs] ovs) \\ cs])
     | otherwise          = (0, [])
         where okVals   = all ((`elem` ovs) . value) cs
               sameSuit = length (groupBy ((==) `on` suit) cs) == 1
@@ -181,27 +181,27 @@ countRoyalFlush cs
     -- completing the hand of the given cards and which cards are required
 countStraightFlush :: [Card] -> (Int,[[Card]])
 countStraightFlush cs
---    | null cs            = (40, concat . map (\s-> map (map (\v->Card v s)) ovs) $ enumFrom Spades)
+--    | null cs            = (40, concat $ map (fromSuiVal (enumFrom Spades)) ovs)
     | okVals && sameSuit = (length possHands, map (\\ cs) possHands)
     | otherwise          = (0, [])
         where okVals   = length possHands > 0
               sameSuit = length (suitDescGroups cs) == 1
-              possHands = map (map (\v-> Card v (suit $ head cs))) $ filter ((map value cs) `subsetOf`) ovs
-              ovs = (:) ((:) Ace $ enumFromTo Two Five) $ zipWith (\f t-> enumFromTo f t) (enumFromTo Two Ten) (enumFromTo Six Ace)
+              possHands = concat . map (fromSuiVal [suit $ head cs]) $ filter ((map value cs) `subsetOf`) ovs
+              ovs = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
 
 
     -- Return the number of possible FourOfAKinds which can be formed by
     -- completing the hand of the given cards and which cards are required
 countFourOfAKind :: [Card] -> (Int,[[Card]])
 countFourOfAKind cs
---    | null cs   = (13, map (\v-> map (Card v) $ enumFrom Spades) $ enumFrom Two)
+--    | null cs   = (13, fromValSui (enumFrom Two) (enumFrom Spades))
     | okVals    = if (length h) == 1
                     then (2, [(left h), left l])
                     else (1, [left h])
     | otherwise = (0, [])
         where okVals = (length vgcs < 3) &&
                         (if length vgcs == 2 then (length l) == 1 else True)
-              left vgc = (map (Card (value $ head vgc)) $ enumFrom Spades) \\ cs
+              left vgc = (concat $ fromValSui [value $ head vgc] (enumFrom Spades)) \\ cs
               (h,l) = (head vgcs, last vgcs)
               vgcs = valueDescGroups cs
 
