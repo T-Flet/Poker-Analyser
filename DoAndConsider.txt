@@ -22,8 +22,6 @@
 
 ---- 1 - TO DO -----------------------------------------------------------------
 
-    MAKE HANDTYPECHECKERS ALSO RETURN THE 5 CARDS CONSTITUTING THE HANDTYPE
-
     WORK ON roundEnd
 
     PERHAPS RECONSIDER THE WHOLE CardSet INSTEAD OF [Card] RETURN TYPE OF count

@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.5 - 08-09/04/2015
+--          0.6 - 11/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -57,12 +57,13 @@ eqHands = (==) `on` rankHand
 
     -- Given any set of 5 cards (hand), return its rank
 rankHand :: [Card] -> Int
-rankHand cs = rankHandType cs $ bestHandType cs
+rankHand cs = rankHandType $ bestHandType cs
 
 
     -- Given any identified HandType and its characteristic details, return its rank
-rankHandType :: [Card] -> (HandType,HandTypesField) -> Int
-rankHandType cs (ht,htf) = case ht of
+    -- NOTE: The input is the same as the output of functions like whatIs and bestHandType
+rankHandType :: ((HandType,HandTypesField),[Card]) -> Int
+rankHandType ((ht,htf),cs) = case ht of
     RoyalFlush    -> rankRoyalFlush    cs $ toS htf
     StraightFlush -> rankStraightFlush cs $ toT htf
     FourOfAKind   -> rankFourOfAKind   cs $ toV htf
@@ -263,7 +264,7 @@ allHandTypesIn cs = identifyHts . foldl countHandTypes zeroes $ handCombinations
                     [(counts!!itsHtNum) + 1],
                     drop (itsHtNum + 1) counts
                 ]
-            where itsHtNum = fromEnum . fst . bestHandType $ hand
+            where itsHtNum = fromEnum . fst . fst $ bestHandType hand
 
 
     -- Return how many hands have a specific HandType as their highest one
@@ -278,7 +279,7 @@ ht `handTypeIn` cs = foldl countHandType 0 $ handCombinations cs
     where countHandType count hand
             | itsHt == ht = count + 1
             | otherwise   = count
-            where itsHt = fst . bestHandType $ hand
+            where itsHt = fst . fst $ bestHandType hand
 
 
     -- Return all possible 5-card combinations from the given cards

@@ -269,8 +269,8 @@ plRevealsHand s@(f:_) x sCs = case sequence $ map toCard sCs of
     Nothing -> (s, "Cards have been mistyped")
     Just cs -> (newFrame s [("players", FP (np:ps))], "Player " ++ show x ++ " reveals " ++ show cs)
         where np = Player x (balance p) (onPlate p) (status p) cs npH
-              npH = Hand ht (rankHandType cs htf) cs
-              htf@(ht,_) = bestHandType cs
+              npH = Hand ht (rankHandType bht) ncs
+              bht@(htf@(ht,_),ncs) = bestHandType cs
               ([p],ps) = partition ((==x) . num) $ players f
 
 
