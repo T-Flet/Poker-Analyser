@@ -138,7 +138,7 @@ isNplet n cs = isLenType n value $ valueDescGroups cs
     -- and return their values and the 5 constituting cards
 is2Nplet :: Int -> Int -> [Card] -> Maybe ([Value],[Card])
 is2Nplet n m cs
-    | length xg >= a && length yg >= b = if n == m
+    | length gs >= 2 && length xg >= a && length yg >= b = if n == m
                 -- If TwoPair, give the higher value first
                 then Just (xys, xygs)
                 else Just ([value x, value y], xygs)

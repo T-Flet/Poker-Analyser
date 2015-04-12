@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.21 - 09/04/2015
+--          0.22 - 11-12/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -143,8 +143,8 @@ shellCommand s cmd = case cmd of
                 (s, "Your hand is a " ++ show ht ++ " of " ++ show htf)
                     where (ht,htf) = bestHandType . concat $ map (\f-> f $ head s) [table, myCards]
 
---    "re" ->
---                roundEnd s
+    "re" ->
+                roundEnd s
 
     "h" ->
                 (s, help)
@@ -278,14 +278,23 @@ plRevealsHand s@(f:_) x sCs = case sequence $ map toCard sCs of
     -- fiches (giving them to the winners), and, depending on how the game is
     -- played, either put them back into the deck or not.
     -- Mention the player(s) in the lead
---roundEnd :: State -> (State,String)
---roundEnd s@(f:_) = (nf:s, "Round winner(s) and prize(s): " ++ show winnersPrizes ++ ".\nPlayer(s) in the lead: " ++ show (inTheLead [nf]))
---    where winnersPrizes = map (\p-> (p,prize)) -- ADD SPLIT POTS ETC HERE!!!!!!!!!!
---          prize = (plate f) / (length winners)
---          winners = head . groupBy eqPlHands . sortBy cmpPlHands . filter inRound $ players f
---          inRound = (`notElem` [Fold, Out]) . status
---          cmpPlHands = cmpHands `on` (cards . hisHand)
---          eqPlHands = eqHands `on` (cards . hisHand)
+roundEnd :: State -> (State,String)
+roundEnd s@(f:_) = (ns, "Round winner(s) and prize(s): " ++ show winnersPrizes ++ ".\nPlayer(s) in the lead: " ++ show (inTheLead ns))
+    where ns = newFrame s [("action", FA RoundEnd), ("cardsInDeck", FI 52), ("table", FC []), ("myCards", FC []), ("plate", FI 0), ("players", FP nPls)] -- EVENTUALLY ADD FATE OF CARDS HERE (BACK IN DECK OR NOT)
+          nPls = map givePrize $ players f
+          givePrize p
+            | p `elem` winners = newPlayer p [("balance", PI (prize + balance p)), ("onPlate", PI 0), ("status", PA $
+            Won [num p] prize), ("hisCards", PC []), ("hisHand", PH $ Hand HighCard 0 [])]
+            | otherwise        = newPlayer p [("onPlate", PI 0), ("hisCards", PC []), ("hisHand", PH $ Hand HighCard 0 [])]
+          winnersPrizes = map (\p-> (num p,prize)) winners-- ADD SPLIT POTS ETC HERE!!!!!!!!!!
+          prize = (plate f) `div` (length winners)
+          winners = head . groupBy eqPlHands . sortBy cmpPlHands . filter inRound $ players f
+          inRound p = case status p of
+                Out  _ -> False
+                Fold _ -> False
+                _      -> True
+          cmpPlHands = cmpHands `on` (cards . hisHand)
+          eqPlHands = eqHands `on` (cards . hisHand)
 
 
 
