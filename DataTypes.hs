@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.9 - 08-09/04/2015
+--          0.10 - 13-14/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -166,21 +166,21 @@ data HandType = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight | Flush
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
 
 
-data Hand = Hand {hKind :: HandType, rank :: Int, cards :: [Card]}
-                deriving (Eq, Ord, Show)
-
-
-data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit]}
-                deriving (Eq, Ord, Show)
-
-
 data HandTypesField = HV Value | HS Suit | HL [Value] | HT (Suit,Value)
-                deriving (Eq)
+                deriving (Eq, Ord)
 instance Show HandTypesField where
    show (HV x) = show x
    show (HS x) = show x
    show (HL x) = show x
    show (HT x) = show x
+
+
+data Hand = Hand {hType :: HandType, hTField :: HandTypesField, rank :: Int, cards :: [Card]}
+                deriving (Eq, Ord, Show)
+
+
+data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit]}
+                deriving (Eq, Ord, Show)
 
 
 
@@ -201,7 +201,7 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 
 ---- 3 - STATE RELATED DATA TYPES ----------------------------------------------
 
-data Action = GameStart | SetPlayers Int | SetBalance Int | SetDealer Int | Discard Int
+data Action = GameStart | SetPlayers Int | SetUser Int | SetBalance Int | SetDealer Int | Discard Int
                 | RoundStart | StartHand [Card] | Flop [Card] | Turn [Card] | River [Card]
                 | Idle | Check Int | Bet Int Int | Raise Int Int | Fold Int | Out Int | Won [Int] Int
                 | RoundEnd | GameEnd Int
@@ -228,8 +228,8 @@ data PlayerField = PI Int | PA Action | PC [Card] | PH Hand
                 deriving (Eq, Show)
 
 
-data Frame = Frame {action :: Action, playersNum :: Int, dealer :: Int,
-                    cardsInDeck :: Int, table :: [Card], myCards :: [Card],
+data Frame = Frame {action :: Action, playersNum :: Int, userNum :: Int,
+                    dealer :: Int, cardsInDeck :: Int, table :: [Card],
                     plate :: Int, players :: [Player]}
                 deriving (Eq)
                     -- The actual player is the first (0) in players list
@@ -238,10 +238,10 @@ instance Show Frame where
         where funcs :: [(String,(Frame -> String))]
               funcs = [ ("Current action: ",    show . action),
                         ("Players Number: ",    show . playersNum),
+                        ("User Number: ",       show . userNum),
                         ("Dealer ID: ",         show . dealer),
                         ("Cards in deck: ",     show . cardsInDeck),
                         ("Cards on table: ",    show . table),
-                        ("My Cards: ",          show . myCards),
                         ("Amount on plate: ",   show . plate),
                         ("Players' Status: ",   show . players) ]
 
@@ -272,12 +272,17 @@ fromFP (FP x) = x
 
     -- Starting Player
 initialPlayer :: Int -> Player
-initialPlayer nu = Player nu 0 0 Idle [] (Hand HighCard 0 [])
+initialPlayer nu = Player nu 0 0 Idle [] (Hand HighCard (HV Two) 0 [])
+
+
+    -- The User's Cards
+myCards :: Frame -> [Card]
+myCards f = hisCards . head . filter ((== userNum f) . num) $ players f
 
 
     -- Starting State
 initialState :: State
-initialState = [Frame GameStart 0 0 52 [] [] 0 []]
+initialState = [Frame GameStart 0 0 0 52 [] 0 []]
 
 
 

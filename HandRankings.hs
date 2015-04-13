@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.6 - 11/04/2015
+--          0.7 - 13-14/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -53,6 +53,12 @@ cmpHands = compare `on` rankHand
     -- ranking them
 eqHands :: [Card] -> [Card] -> Bool
 eqHands = (==) `on` rankHand
+
+
+    -- Given any set of cards, return its best Hand
+bestHand :: [Card] -> Hand
+bestHand cs = Hand ht htf (rankHandType bht) ncs
+    where bht@((ht,htf),ncs) = bestHandType cs
 
 
     -- Given any set of 5 cards (hand), return its rank

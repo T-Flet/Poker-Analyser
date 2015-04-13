@@ -22,12 +22,13 @@
 
 ---- 1 - TO DO -----------------------------------------------------------------
 
-    EXTEND case find ... of BEGINNING/CHECK IN plBets TO ALL OTHER RELATED FUNCTIONS
-
-    MAKE THE PLAYER PLAYER 1 OR 0 OR ANY OTHER OF USER'S CHOICE
+    REDO ALL FUNCTIONS WHICH USE Hand OR SIMILAR FIELDS BY MAKING THEM MAKE BETTER
+    USE OF THE NEW HandTypeField FIELD IN Hand
 
     WORK ON roundEnd;
         NOW: MAKE IT STATE WHAT HAND EVERYONE HAS BEFORE PROCLAMING WINNERS
+             BUG: Players' Hands: *** Exception: Prelude.head: empty list
+                    ^^^ When invoked in shell
 
     PERHAPS RECONSIDER THE WHOLE CardSet INSTEAD OF [Card] RETURN TYPE OF count
     FUNCTIONS... THE LATTER SIMPLY CONTAIN MORE INFORMATION...
@@ -192,12 +193,19 @@ let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 
 let Just a = sequence $ map toCard ["ks", "qh", "jd", "1c", "kh", "ks", "qd"]
 let Just b = sequence $ map toCard ["3h", "5c", "ks", "1s", "2d", "ah", "9d"]
 
-let pls = [Player 1 50 10 (Fold 1) [] (Hand HighCard 0 []), Player 2 300 30 (Bet 2 30) [] (Hand HighCard 0 []), Player 3 200 50 (Raise 3 50) [] (Hand HighCard 0 [])]
-let fr = Frame (Discard 3) 4 2 40 a b 0 pls
+let pls = [Player 1 50 10 (Fold 1) [] (Hand HighCard (HV Two) 0 []), Player 2 300 30 (Bet 2 30) [] (Hand HighCard (HV Two) 0 []), Player 3 200 50 (Raise 3 50) [] (Hand HighCard (HV Two) 0 [])]
+let fr = Frame (Discard 3) 4 2 1 40 a 0 pls
 let fl = [("action", FA (Fold 2)), ("dealer", FI 3)]
 let ss = newFrame [fr] fl
 
+
+
+
+
+gameShell ss
+
 spn 5
+sun 1
 spb 500
 s0d
 ci ks qh
