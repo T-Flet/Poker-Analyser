@@ -201,7 +201,7 @@ noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 
 ---- 3 - STATE RELATED DATA TYPES ----------------------------------------------
 
-data Action = GameStart | SetPlayers Int | SetDealer Int | Discard Int
+data Action = GameStart | SetPlayers Int | SetBalance Int | SetDealer Int | Discard Int
                 | RoundStart | StartHand [Card] | Flop [Card] | Turn [Card] | River [Card]
                 | Idle | Check Int | Bet Int Int | Raise Int Int | Fold Int | Out Int | Won [Int] Int
                 | RoundEnd | GameEnd Int

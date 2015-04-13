@@ -22,8 +22,12 @@
 
 ---- 1 - TO DO -----------------------------------------------------------------
 
-    WORK ON roundEnd
-        CURRENTLY: CHECK OUT BUG OF IRREFUATABLE (LONG ONE) PATTERN IN is2Nplet
+    EXTEND case find ... of BEGINNING/CHECK IN plBets TO ALL OTHER RELATED FUNCTIONS
+
+    MAKE THE PLAYER PLAYER 1 OR 0 OR ANY OTHER OF USER'S CHOICE
+
+    WORK ON roundEnd;
+        NOW: MAKE IT STATE WHAT HAND EVERYONE HAS BEFORE PROCLAMING WINNERS
 
     PERHAPS RECONSIDER THE WHOLE CardSet INSTEAD OF [Card] RETURN TYPE OF count
     FUNCTIONS... THE LATTER SIMPLY CONTAIN MORE INFORMATION...
@@ -84,7 +88,7 @@
 
 ---- 2 - TO CONSIDER -----------------------------------------------------------
 
-    BUILD A newPlayer FUNCTION OF THE SAME FORM AND PURPOSE AS newFrame
+    REMOVING RoundEnd Action AND SIMPLY USE THE Won ONE, PERHAPS MAKING IT A WonRound WITH ANOTHER WonGame ONE
 
     THINK ABOUT THE DIFFERENCE BETWEEN PROBABILITIES/LIKELYHOODS CALCULATED FROM
     THE SINGLE CARDS VS THOSE CALCULATED FROM HOW MANY WAYS EXIST OF ACHIEVING A
@@ -182,6 +186,9 @@
 
 ---- 4 - TESTING DATA ----------------------------------------------------------
 
+let h = probsToHand (sort a) (reverse $ sort b)
+let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
+
 let Just a = sequence $ map toCard ["ks", "qh", "jd", "1c", "kh", "ks", "qd"]
 let Just b = sequence $ map toCard ["3h", "5c", "ks", "1s", "2d", "ah", "9d"]
 
@@ -190,5 +197,15 @@ let fr = Frame (Discard 3) 4 2 40 a b 0 pls
 let fl = [("action", FA (Fold 2)), ("dealer", FI 3)]
 let ss = newFrame [fr] fl
 
-let h = probsToHand (sort a) (reverse $ sort b)
-let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
+spn 5
+spb 500
+s0d
+ci ks qh
+p2b 5
+p3b 10
+p4f
+p5f
+p1b 10
+p2b 5
+cf jd ah 1c
+

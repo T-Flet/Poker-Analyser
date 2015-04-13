@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.22 - 11-12/04/2015
+--          0.23 - 12-13/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -34,7 +34,7 @@ import HandTypeCheckers
 import HandRankings
 --import Probabilities
 
-import Data.List (sort, sortBy, groupBy, maximumBy, group, partition)
+import Data.List (sort, sortBy, groupBy, maximumBy, group, partition, find)
 import qualified Data.Map as M (lookup, fromList)
 import Data.Function (on)
 
@@ -70,15 +70,21 @@ gameShell state = do
     --  COULD USE A LET OR WHERE CLAUSE TO MAKE THE CHARS STRINGS INSTEAD OF DOING, FOR EXAMPLE, [x]
 shellCommand :: State -> String -> (State,String)
 shellCommand s cmd = case cmd of
-    -- Player related commands start with p
+    -- Setting related commands start with s
         -- Set players number
-    ('p':'n':' ':n) ->
-                (setPlayers s (read n :: Int),
+    ('s':'p':'n':' ':n) ->
+                (setPlayersNum s (read n :: Int),
                     "Players number set to " ++ n)
+    -- Set players balance
+    ('s':'p':'b':' ':n) ->
+                (addPlayersBal s (read n :: Int),
+                    "Players balance set to " ++ n)
         -- Player x is dealer (the actual player is the first in whichever direction)
-    ('p':x:'d':_) ->
+    ('s':x:'d':_) ->
                 (setDealer s (read [x] :: Int),
                     "Player " ++ [x] ++ " is dealer")
+
+    -- Player related commands start with p
         -- Player x Folds
     ('p':x:'f':_) ->
                 (plFolds s (read [x] :: Int),
@@ -136,6 +142,10 @@ shellCommand s cmd = case cmd of
     "fa" ->
                 (s, "Frames: " ++ (show $ length s))
 
+        -- History of frame Actions
+    "fh" ->
+                (s, "History: " ++ (show $ map action s))
+
         -- MAKE A COMMAND TO DISPLAY THE NUMBER OF ROUNDS (CALCULATE OR STORE IT)
     -- Analysis commands begin with a
         -- Analyse the player's hand
@@ -159,10 +169,12 @@ shellCommand s cmd = case cmd of
     -- Command help
 help :: String
 help = " \n\
-\   -- Player related commands start with p \n\
-\   pn <Int>        Set players number \n\
-\   p<Int>d         Player x is dealer (the actual player is the first in whichever direction) \n\
+\   -- Setting commands start with s \n\
+\   spn <Int>       Set players number \n\
+\   spb <Int>       Set players balance \n\
+\   s<Int>d         Player x is dealer (the actual player is the first in whichever direction) \n\
 \ \n\
+\   -- Player related commands start with p \n\
 \   p<Int>b         Player x Folds \n\
 \   p<Int>b <Int>   Player x Bets amount (or Raises, but reporting the bet) \n\
 \   p<Int>r <Int>   Player x Raises by amount \n\
@@ -183,6 +195,7 @@ help = " \n\
 \   fff         Show the full frame fields \n\
 \   fb          Show players' balances \n\
 \   fa          Number of actions or frames \n\
+\   fh          History of frame Actions \n\
 \ \n\
 \   -- Analysis commands begin with a \n\
 \   ah          Analyse the player's hand \n\
@@ -204,9 +217,16 @@ inTheLead = sort . map fst . last . groupBy ((==) `on` snd) . sortBy (compare `o
 
 
     -- Set the number of players
-setPlayers :: State -> Int -> State
-setPlayers s n = newFrame s [("action", FA (SetPlayers n)), ("playersNum", FI n), ("players", FP pls)]
+setPlayersNum :: State -> Int -> State
+setPlayersNum s n = newFrame s [("action", FA (SetPlayers n)), ("playersNum", FI n), ("players", FP pls)]
     where pls = map initialPlayer [1..n]
+
+
+    -- Set the balance of all players
+addPlayersBal :: State -> Int -> State
+addPlayersBal s@(f:_) n = newFrame s [("action", FA (SetBalance n)), ("players", FP nPls)]
+    where nPls = map setBal $ players f
+          setBal p = newPlayer p [("balance", PI $ balance p + n)]
 
 
     -- Set the player x (x after the actual player) to be the dealer
@@ -236,6 +256,7 @@ addCards s@(f:_) act cs = newFrame s [("action", FA nAct), ("cardsInDeck", FI nd
             Flop _ -> 3
             _      -> 1
 
+
     -- Player x Folds
 plFolds :: State -> Int -> State
 plFolds s@(f:_) x = newFrame s [("action", FA (Fold x)), ("players", FP nPls)]
@@ -245,22 +266,29 @@ plFolds s@(f:_) x = newFrame s [("action", FA (Fold x)), ("players", FP nPls)]
             | otherwise   = pl
 
 
+    -- CHECK THAT THE PLAYER EXISTS
     -- INTRODUCE NEGATIVE BALANCE CHECKS SOMEWHERE
     -- ALSO, CHECK THAT A Bet IS >= THE PREVIOUS ONE
     -- Player x bets or raises by amount a
 plBets :: State -> (Int -> Int -> Action) -> Int -> Int -> State
-plBets s@(f:_) act x a = newFrame s [("action", FA nAct), ("players", FP nPls)]
-    where nPls = map plStatus (players f)
-          nAct = act x a
-          plStatus pl = if num pl == x
-            then case nAct of
-                Bet _ _   -> Player x nBal nPlt nAct (hisCards pl) (hisHand pl)
-                Raise _ _ -> Player x (nBal-pPPlt) (nPlt+pPPlt) nAct (hisCards pl) (hisHand pl)
-            else pl
-                where nBal = ((balance pl) - a)
-                      nPlt = ((onPlate pl) + a)
+plBets s@(f:_) act x a = case find ((== x) . num) $ players f of
+    Nothing -> s
+    Just p  -> newFrame s [("action", FA nAct), ("plate", FI nPlat), ("players", FP nPls)]
+        where nPls = map plStatus (players f)
+              nAct = act x a
+              nBal = (balance p) - a
+              nPlt = (onPlate p) + a
+              pPPlt = onPlate . head . filter ((== (x-1) `mod` (playersNum f)) . num) $ players f
 
-                      pPPlt = onPlate . head . filter ((== (x-1) `mod` (playersNum f)) . num) $ players f
+              nPlat = case nAct of
+                Bet   _ _ -> plate f + a
+                Raise _ _ -> plate f + pPPlt + a
+
+              plStatus pl = if num pl == x
+                then case nAct of
+                    Bet   _ _ -> Player x nBal nPlt nAct (hisCards pl) (hisHand pl)
+                    Raise _ _ -> Player x (nBal-pPPlt) (nPlt+pPPlt) nAct (hisCards pl) (hisHand pl)
+                else pl
 
 
     -- Player x reveals his hand

@@ -148,7 +148,10 @@ is2Nplet n m cs
                 | otherwise        = xygs'
               xygs' = concat [take a xg, take b yg]
               xys = map value . reverse $ sort [x,y]
-              gs@(xg@(x:_):yg@(y:_):zgs) = valueDescGroups cs
+              xg@(x:_):yg@(y:_):zgs = gs
+              -- The reason why the above pattern is not matched directly
+              -- below is because the gs length check needs to happen before it
+              gs = valueDescGroups cs
               [b,a] = sort [n,m]
 
 
