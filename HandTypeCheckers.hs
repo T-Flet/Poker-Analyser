@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.3 - 11/04/2015
+--          0.4 - 15-16/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -37,23 +37,23 @@ import Data.Function (on)
     -- Return the best HandType that the given cards constitute
     -- and its carachteristic fields and its actual 5 cards
     -- NOTE: Same as but much faster than: head . whatIs
-bestHandType :: [Card] -> ((HandType,HandTypesField),[Card])
+bestHandType :: [Card] -> Hand
 bestHandType cs
-    | Just (htv,ncs) <- isRoyalFlush    cs = ((RoyalFlush,    HS htv),ncs)
-    | Just (htv,ncs) <- isStraightFlush cs = ((StraightFlush, HT htv),ncs)
-    | Just (htv,ncs) <- isFourOfAKind   cs = ((FourOfAKind,   HV htv),ncs)
-    | Just (htv,ncs) <- isFullHouse     cs = ((FullHouse,     HL htv),ncs)
-    | Just (htv,ncs) <- isFlush         cs = ((Flush,         HS htv),ncs)
-    | Just (htv,ncs) <- isStraight      cs = ((Straight,      HV htv),ncs)
-    | Just (htv,ncs) <- isThreeOfAKind  cs = ((ThreeOfAKind,  HV htv),ncs)
-    | Just (htv,ncs) <- isTwoPair       cs = ((TwoPair,       HL htv),ncs)
-    | Just (htv,ncs) <- isOnePair       cs = ((OnePair,       HV htv),ncs)
-    | Just (htv,ncs) <- isHighCard      cs = ((HighCard,      HV htv),ncs)
+    | Just (htv,ncs) <- isRoyalFlush    cs = Hand RoyalFlush    (HS htv) 0 ncs
+    | Just (htv,ncs) <- isStraightFlush cs = Hand StraightFlush (HT htv) 0 ncs
+    | Just (htv,ncs) <- isFourOfAKind   cs = Hand FourOfAKind   (HV htv) 0 ncs
+    | Just (htv,ncs) <- isFullHouse     cs = Hand FullHouse     (HL htv) 0 ncs
+    | Just (htv,ncs) <- isFlush         cs = Hand Flush         (HS htv) 0 ncs
+    | Just (htv,ncs) <- isStraight      cs = Hand Straight      (HV htv) 0 ncs
+    | Just (htv,ncs) <- isThreeOfAKind  cs = Hand ThreeOfAKind  (HV htv) 0 ncs
+    | Just (htv,ncs) <- isTwoPair       cs = Hand TwoPair       (HL htv) 0 ncs
+    | Just (htv,ncs) <- isOnePair       cs = Hand OnePair       (HV htv) 0 ncs
+    | Just (htv,ncs) <- isHighCard      cs = Hand HighCard      (HV htv) 0 ncs
 
 
     -- Return all the HandTypes that the given cards constitute
     -- and their carachteristic fields and their actual 5 cards
-whatIs :: [Card] -> [((HandType,HandTypesField),[Card])]
+whatIs :: [Card] -> [Hand]
 whatIs cs = concat [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
     where rF = hTCard isRoyalFlush    HS RoyalFlush
           sF = hTCard isStraightFlush HT StraightFlush
@@ -66,9 +66,9 @@ whatIs cs = concat [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
           oP = hTCard isOnePair       HV OnePair
           hC = hTCard isHighCard      HV HighCard
 
-          hTCard :: ([Card] -> Maybe (a,[Card])) -> (a -> HandTypesField) -> HandType -> [((HandType,HandTypesField),[Card])]
-          hTCard hTChecker constructor hT = maybe [] tupler $ hTChecker cs
-            where tupler (x,ncs) = [((hT, constructor x), ncs)]
+          hTCard :: ([Card] -> Maybe (a,[Card])) -> (a -> HandTypesField) -> HandType -> [Hand]
+          hTCard hTChecker constructor hT = maybe [] hander $ hTChecker cs
+            where hander (x,ncs) = [Hand hT (constructor x) 0 ncs]
 
 
 

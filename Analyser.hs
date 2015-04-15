@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.25 - 14-15/04/2015
+--          0.26 - 15-16/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -145,13 +145,19 @@ shellCommand s cmd = case cmd of
         -- Analyse the player's hand
     "ah" ->
                 (s, "Your hand is a " ++ show ht ++ " of " ++ show htf)
-                    where (ht,htf) = bestHandType . concat $ map (\f-> f $ head s) [table, myCards]
+                    where (Hand ht htf _ _) = bestHandType . concat $ map (\f-> f $ head s) [table, myCards]
 
     "re" ->
                 roundEnd s
 
+    -- Other inputs
+        -- The help string
     "h" ->
                 (s, help)
+
+        -- Nothing entered
+    "" ->
+                (s, "")
 
         -- Otherwise: not a recognised command
     _ ->
@@ -214,7 +220,7 @@ inTheLead = sortBy (compare `on` fst) . last . groupBy ((==) `on` snd) . sortBy 
 
     -- Set the number of players
 setPlayersNum :: State -> Int -> State
-setPlayersNum s n = newFrame s [("action", FA (SetPlayers n)), ("playersNum", FI n), ("players", FP pls)]
+setPlayersNum s n = addFrame s [("action", FA (SetPlayers n)), ("playersNum", FI n), ("players", FP pls)]
     where pls = map initialPlayer [1..n]
 
 
@@ -223,12 +229,12 @@ setUserNum :: State -> Int -> (State,String)
 setUserNum s@(f:_) n = case find ((== n) . num) $ players f of
     Nothing -> (s, "Non-existent player")
     Just p  -> (ns, "Players number set to " ++ show n)
-        where ns = newFrame s [("action", FA (SetUser n)), ("userNum", FI n)]
+        where ns = addFrame s [("action", FA (SetUser n)), ("userNum", FI n)]
 
 
     -- Set the balance of all players
 addPlayersBal :: State -> Int -> State
-addPlayersBal s@(f:_) n = newFrame s [("action", FA (SetBalance n)), ("players", FP nPls)]
+addPlayersBal s@(f:_) n = addFrame s [("action", FA (SetBalance n)), ("players", FP nPls)]
     where nPls = map setBal $ players f
           setBal p = newPlayer p [("balance", PI $ balance p + n)]
 
@@ -238,25 +244,25 @@ setDealer :: State -> Int -> (State,String)
 setDealer s@(f:_) x = case find ((== x) . num) $ players f of
     Nothing -> (s, "Non-existent player")
     Just p  -> (ns, "Player " ++ show x ++ " is dealer")
-        where ns = newFrame s [("action", FA (SetDealer x)), ("dealer", FI x)]
+        where ns = addFrame s [("action", FA (SetDealer x)), ("dealer", FI x)]
 
 
     -- Give out two cards per player
 startHand :: State -> [Card] -> State
-startHand s@(f:_) ucs = newFrame s $ [("action", FA (StartHand ucs)), ("cardsInDeck", FI ndcs)] ++ nUsrTabl
+startHand s@(f:_) ucs = addFrame s $ [("action", FA (StartHand ucs)), ("cardsInDeck", FI ndcs)] ++ nUsrTabl
     where ndcs = (cardsInDeck f) - 2 * (playersNum f)
           nUsrTabl = updatePlayerAndTable f (userNum f) ucs []
 
 
     -- Discard n cards (for some reason)
 discard :: State -> Int -> State
-discard s@(f:_) n = newFrame s [("action", FA (Discard n)), ("cardsInDeck", FI ndcs)]
+discard s@(f:_) n = addFrame s [("action", FA (Discard n)), ("cardsInDeck", FI ndcs)]
     where ndcs = (cardsInDeck f) - n
 
 
     -- Add some cards to the table (Flop, Turn, River) and recalculate the user's Hand
 addCards :: State -> ([Card] -> Action) -> [Card] -> State
-addCards s@(f:_) act tcs = newFrame s $ [("action", FA nAct), ("cardsInDeck", FI ndcs)] ++ nUsrTabl
+addCards s@(f:_) act tcs = addFrame s $ [("action", FA nAct), ("cardsInDeck", FI ndcs)] ++ nUsrTabl
     where ndcs = (cardsInDeck f) - (length tcs) - discdCs
           nAct = act tcs
           nUsrTabl = updatePlayerAndTable f (userNum f) [] tcs
@@ -270,7 +276,7 @@ plFolds :: State -> Int -> (State,String)
 plFolds s@(f:_) x = case find ((== x) . num) $ players f of
     Nothing -> (s, "Non-existent player")
     Just p  -> (ns, "Player " ++ show x ++ " folded")
-        where ns = newFrame s [("action", FA (Fold x)), ("players", FP nPls)]
+        where ns = addFrame s [("action", FA (Fold x)), ("players", FP nPls)]
               nPls = map plStatus (players f)
               plStatus pl
                 | num pl == x = Player x (balance pl) (onPlate pl) (Fold x) (hisCards pl) (hisHand pl)
@@ -285,7 +291,7 @@ plBets :: State -> (Int -> Int -> Action) -> Int -> Int -> (State,String)
 plBets s@(f:_) act x a = case find ((== x) . num) $ players f of
     Nothing -> (s, "Non-existent player")
     Just p  -> (ns, "Player " ++ show x ++ actStr ++ show a)
-        where ns = newFrame s [("action", FA nAct), ("plate", FI nPlat), ("players", FP nPls)]
+        where ns = addFrame s [("action", FA nAct), ("plate", FI nPlat), ("players", FP nPls)]
               nPls = map plStatus (players f)
               nAct = act x a
               nBal = (balance p) - a
@@ -309,7 +315,7 @@ plRevealsHand s@(f:_) x sCs = case find ((== x) . num) $ players f of
     Nothing -> (s, "Non-existent player")
     Just p  -> case sequence $ map toCard sCs of
         Nothing -> (s, "Cards have been mistyped")
-        Just cs -> (newFrame s $ updatePlayerAndTable f x cs [], "Player " ++ show x ++ " reveals " ++ show cs)
+        Just cs -> (addFrame s $ updatePlayerAndTable f x cs [], "Player " ++ show x ++ " reveals " ++ show cs)
 
 
     -- Determine the round winners, clear all hands and table of cards and of
@@ -317,8 +323,10 @@ plRevealsHand s@(f:_) x sCs = case find ((== x) . num) $ players f of
     -- played, either put them back into the deck or not.
     -- Mention the player(s) in the lead
 roundEnd :: State -> (State,String)
-roundEnd s@(f:_) = (ns, nsStr)
-    where ns = newFrame s [("action", FA RoundEnd), ("cardsInDeck", FI 52), ("table", FC []), ("plate", FI 0), ("players", FP nPls)] -- EVENTUALLY ADD FATE OF CARDS HERE (BACK IN DECK OR NOT)
+roundEnd s@(f:_)
+    | any (null . hisCards) inRoundPls = (s, "Some players still in game have not revealed their hand!")
+    | otherwise                        = (ns, nsStr)
+    where ns = addFrame s [("action", FA RoundEnd), ("cardsInDeck", FI 52), ("table", FC []), ("plate", FI 0), ("players", FP nPls)] -- EVENTUALLY ADD FATE OF CARDS HERE (BACK IN DECK OR NOT)
           nsStr = "Players' Hands: " ++ show justHands ++ "\nRound winner(s) and prize(s): " ++ show winnersPrizes ++ ".\nPlayer(s) in the lead: " ++ show (inTheLead ns)
           nPls = map givePrize $ players f
           givePrize p
@@ -329,7 +337,8 @@ roundEnd s@(f:_) = (ns, nsStr)
           prize = (plate f) `div` (length winners)
           winners = head . groupBy eqPlHands $ plsByHands
           justHands = map (\p-> (num p, (\h-> (hType h, hTField h)) $ hisHand p)) plsByHands
-          plsByHands = reverse . sortBy cmpPlHands . filter inRound $ players f
+          plsByHands = reverse . sortBy cmpPlHands $ inRoundPls
+          inRoundPls = filter inRound $ players f
           inRound p = case status p of
                 Out  _ -> False
                 Fold _ -> False
@@ -357,8 +366,8 @@ newPlayer pl fieldList = (Player no ba op st cs hh)
 
     -- Add a new Frame to the State by providing only the fields which change
     -- with respect to the previous one
-newFrame :: State -> [(String, FrameField)] -> State
-newFrame s@(f:_) fieldList = (Frame act plN usN dea dCN tab plt pls):s
+addFrame :: State -> [(String, FrameField)] -> State
+addFrame s@(f:_) fieldList = (Frame act plN usN dea dCN tab plt pls):s
     where act = newField action      fromFA "action"
           plN = newField playersNum  fromFI "playersNum"
           usN = newField userNum     fromFI "userNum"

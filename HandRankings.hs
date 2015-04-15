@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.7 - 13-14/04/2015
+--          0.8 - 15-16/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -58,7 +58,7 @@ eqHands = (==) `on` rankHand
     -- Given any set of cards, return its best Hand
 bestHand :: [Card] -> Hand
 bestHand cs = Hand ht htf (rankHandType bht) ncs
-    where bht@((ht,htf),ncs) = bestHandType cs
+    where bht@(Hand ht htf _ ncs) = bestHandType cs
 
 
     -- Given any set of 5 cards (hand), return its rank
@@ -68,8 +68,8 @@ rankHand cs = rankHandType $ bestHandType cs
 
     -- Given any identified HandType and its characteristic details, return its rank
     -- NOTE: The input is the same as the output of functions like whatIs and bestHandType
-rankHandType :: ((HandType,HandTypesField),[Card]) -> Int
-rankHandType ((ht,htf),cs) = case ht of
+rankHandType :: Hand -> Int
+rankHandType (Hand ht htf _ cs) = case ht of
     RoyalFlush    -> rankRoyalFlush    cs $ toS htf
     StraightFlush -> rankStraightFlush cs $ toT htf
     FourOfAKind   -> rankFourOfAKind   cs $ toV htf
@@ -172,6 +172,23 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 
     -- NOTE: These functions do not necessarily cater for a null input
 
+
+    -- Apply all HandTypes' Instances Calculators to each subset of the given cards
+--countHandTypes :: [Card] -> [(HandType,(Int,[[Card]]))]
+--countHandTypes cs = [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
+--    where rF = (RoyalFlush,    countRoyalFlush    cs)
+--          sF = (StraightFlush, countStraightFlush cs)
+--          fK = (FourOfAKind,   countFourOfAKind   cs)
+--          fH = (FullHouse,     countFullHouse     cs)
+--          fl = (Flush,         countFlush         cs)
+--          st = (Straight,      countStraight      cs)
+--          tK = (ThreeOfAKind,  countThreeOfAKind  cs)
+--          tP = (TwoPair,       countTwoPair       cs)
+--          oP = (OnePair,       countOnePair       cs)
+--          hC = (HighCard,      countHighCard      cs)
+
+
+
     -- Return the number of possible RoyalFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
 countRoyalFlush :: [Card] -> (Int,[[Card]])
@@ -270,7 +287,7 @@ allHandTypesIn cs = identifyHts . foldl countHandTypes zeroes $ handCombinations
                     [(counts!!itsHtNum) + 1],
                     drop (itsHtNum + 1) counts
                 ]
-            where itsHtNum = fromEnum . fst . fst $ bestHandType hand
+            where itsHtNum = fromEnum . hType $ bestHandType hand
 
 
     -- Return how many hands have a specific HandType as their highest one
@@ -285,7 +302,7 @@ ht `handTypeIn` cs = foldl countHandType 0 $ handCombinations cs
     where countHandType count hand
             | itsHt == ht = count + 1
             | otherwise   = count
-            where itsHt = fst . fst $ bestHandType hand
+            where itsHt = hType $ bestHandType hand
 
 
     -- Return all possible 5-card combinations from the given cards
