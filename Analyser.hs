@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.24 - 13-14/04/2015
+--          0.25 - 14-15/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -208,8 +208,8 @@ balances (f:_) = foldr extractBal [] $ players f
 
 
     -- Determine the players currently in the lead
-inTheLead :: State -> [Int]
-inTheLead = sort . map fst . last . groupBy ((==) `on` snd) . sortBy (compare `on` snd) . balances
+inTheLead :: State -> [(Int,Int)]
+inTheLead = sortBy (compare `on` fst) . last . groupBy ((==) `on` snd) . sortBy (compare `on` snd) . balances
 
 
     -- Set the number of players
@@ -245,7 +245,7 @@ setDealer s@(f:_) x = case find ((== x) . num) $ players f of
 startHand :: State -> [Card] -> State
 startHand s@(f:_) ucs = newFrame s $ [("action", FA (StartHand ucs)), ("cardsInDeck", FI ndcs)] ++ nUsrTabl
     where ndcs = (cardsInDeck f) - 2 * (playersNum f)
-          nUsrTabl = updateUserAndTable f ucs []
+          nUsrTabl = updatePlayerAndTable f (userNum f) ucs []
 
 
     -- Discard n cards (for some reason)
@@ -259,7 +259,7 @@ addCards :: State -> ([Card] -> Action) -> [Card] -> State
 addCards s@(f:_) act tcs = newFrame s $ [("action", FA nAct), ("cardsInDeck", FI ndcs)] ++ nUsrTabl
     where ndcs = (cardsInDeck f) - (length tcs) - discdCs
           nAct = act tcs
-          nUsrTabl = updateUserAndTable f [] tcs
+          nUsrTabl = updatePlayerAndTable f (userNum f) [] tcs
           discdCs = case nAct of
             Flop _ -> 3
             _      -> 1
@@ -309,9 +309,7 @@ plRevealsHand s@(f:_) x sCs = case find ((== x) . num) $ players f of
     Nothing -> (s, "Non-existent player")
     Just p  -> case sequence $ map toCard sCs of
         Nothing -> (s, "Cards have been mistyped")
-        Just cs -> (newFrame s [("players", FP (np:ps))], "Player " ++ show x ++ " reveals " ++ show cs)
-            where np = Player x (balance p) (onPlate p) (status p) cs (bestHand cs)
-                  ([p],ps) = partition ((== x) . num) $ players f
+        Just cs -> (newFrame s $ updatePlayerAndTable f x cs [], "Player " ++ show x ++ " reveals " ++ show cs)
 
 
     -- Determine the round winners, clear all hands and table of cards and of
@@ -331,7 +329,7 @@ roundEnd s@(f:_) = (ns, nsStr)
           prize = (plate f) `div` (length winners)
           winners = head . groupBy eqPlHands $ plsByHands
           justHands = map (\p-> (num p, (\h-> (hType h, hTField h)) $ hisHand p)) plsByHands
-          plsByHands = sortBy cmpPlHands . filter inRound $ players f
+          plsByHands = reverse . sortBy cmpPlHands . filter inRound $ players f
           inRound p = case status p of
                 Out  _ -> False
                 Fold _ -> False
@@ -411,11 +409,11 @@ fieldHandler s@(f:_) funcStr = (s, msg)
 
     -- Update the table and the user's Hand given (or not, meaning possibly empty
     -- lists) his new cards and the table's new ones
-updateUserAndTable :: Frame -> [Card] -> [Card] -> [(String, FrameField)]
-updateUserAndTable f ucs tcs = [("table", FC nTab), ("players", FP nPls)]
+updatePlayerAndTable :: Frame -> Int -> [Card] -> [Card] -> [(String, FrameField)]
+updatePlayerAndTable f pNum pcs tcs = [("table", FC nTab), ("players", FP nPls)]
     where nTab = tcs ++ (table f)
-          nPls = map setUsrCards $ players f
-          setUsrCards p
-            | num p == userNum f = newPlayer p [("hisCards", PC nUcs), ("hisHand", PH $ bestHand (nUcs ++ nTab))]
+          nPls = map setPlrCards $ players f
+          setPlrCards p
+            | num p == pNum = newPlayer p [("hisCards", PC nPcs), ("hisHand", PH $ bestHand (nPcs ++ nTab))]
             | otherwise          = p
-                where nUcs = ucs ++ hisCards p
+                where nPcs = pcs ++ hisCards p

@@ -29,6 +29,7 @@
         NOW: MAKE IT STATE WHAT HAND EVERYONE HAS BEFORE PROCLAMING WINNERS
              BUG: Players' Hands: *** Exception: Prelude.head: empty list
                     ^^^ When invoked in shell
+                CAUSE: HAVING PLAYERS STILL inRound BUT WITHOUT HAVING REVEALD THEIR CARDS
 
     PERHAPS RECONSIDER THE WHOLE CardSet INSTEAD OF [Card] RETURN TYPE OF count
     FUNCTIONS... THE LATTER SIMPLY CONTAIN MORE INFORMATION...
@@ -216,4 +217,9 @@ p5f
 p1b 10
 p2b 5
 cf jd ah 1c
+p2c jc kd
+p3c kh qd
+
+fff
+re
 
