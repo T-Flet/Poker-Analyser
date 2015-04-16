@@ -87,6 +87,12 @@ isOnePair      = isNplet 2
 isThreeOfAKind = isNplet 3
 isFourOfAKind  = isNplet 4
 
+-- CONSIDER THESE VERSIONS OR THE LAST PART INGLOBATED IN isNplet
+--isOnePair, isThreeOfAKind, isFourOfAKind :: [Card] -> Maybe Hand
+--isOnePair      cs = (isNplet 2 cs) >>= (\(val,ncs)-> Just $ Hand OnePair      (HV val) 0 ncs)
+--isThreeOfAKind cs = (isNplet 3 cs) >>= (\(val,ncs)-> Just $ Hand ThreeOfAKind (HV val) 0 ncs)
+--isFourOfAKind  cs = (isNplet 4 cs) >>= (\(val,ncs)-> Just $ Hand FourOfAKind  (HV val) 0 ncs)
+
 
     -- Return the Values of the N-Plets in descending order and their 5 constituting cards
 isTwoPair, isFullHouse :: [Card] -> Maybe ([Value],[Card])
@@ -122,7 +128,7 @@ isStraightFlush cs
 isRoyalFlush :: [Card] -> Maybe (Suit,[Card])
 isRoyalFlush cs = case isStraightFlush cs of
     Just ((s,Ace),ncs) -> Just (s, ncs)
-    _            -> Nothing
+    _                  -> Nothing
 
 
 
