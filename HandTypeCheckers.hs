@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.4 - 15-16/04/2015
+--          0.4.1 - 17-18/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -37,86 +37,136 @@ import Data.Function (on)
     -- Return the best HandType that the given cards constitute
     -- and its carachteristic fields and its actual 5 cards
     -- NOTE: Same as but much faster than: head . whatIs
+--bestHandType :: [Card] -> Hand
+--bestHandType cs
+--    | Just (htv,ncs) <- isRoyalFlush    cs = Hand RoyalFlush    (HS htv) 0 ncs
+--    | Just (htv,ncs) <- isStraightFlush cs = Hand StraightFlush (HT htv) 0 ncs
+--    | Just (htv,ncs) <- isFourOfAKind   cs = Hand FourOfAKind   (HV htv) 0 ncs
+--    | Just (htv,ncs) <- isFullHouse     cs = Hand FullHouse     (HL htv) 0 ncs
+--    | Just (htv,ncs) <- isFlush         cs = Hand Flush         (HS htv) 0 ncs
+--    | Just (htv,ncs) <- isStraight      cs = Hand Straight      (HV htv) 0 ncs
+--    | Just (htv,ncs) <- isThreeOfAKind  cs = Hand ThreeOfAKind  (HV htv) 0 ncs
+--    | Just (htv,ncs) <- isTwoPair       cs = Hand TwoPair       (HL htv) 0 ncs
+--    | Just (htv,ncs) <- isOnePair       cs = Hand OnePair       (HV htv) 0 ncs
+--    | Just (htv,ncs) <- isHighCard      cs = Hand HighCard      (HV htv) 0 ncs
+
 bestHandType :: [Card] -> Hand
 bestHandType cs
-    | Just (htv,ncs) <- isRoyalFlush    cs = Hand RoyalFlush    (HS htv) 0 ncs
-    | Just (htv,ncs) <- isStraightFlush cs = Hand StraightFlush (HT htv) 0 ncs
-    | Just (htv,ncs) <- isFourOfAKind   cs = Hand FourOfAKind   (HV htv) 0 ncs
-    | Just (htv,ncs) <- isFullHouse     cs = Hand FullHouse     (HL htv) 0 ncs
-    | Just (htv,ncs) <- isFlush         cs = Hand Flush         (HS htv) 0 ncs
-    | Just (htv,ncs) <- isStraight      cs = Hand Straight      (HV htv) 0 ncs
-    | Just (htv,ncs) <- isThreeOfAKind  cs = Hand ThreeOfAKind  (HV htv) 0 ncs
-    | Just (htv,ncs) <- isTwoPair       cs = Hand TwoPair       (HL htv) 0 ncs
-    | Just (htv,ncs) <- isOnePair       cs = Hand OnePair       (HV htv) 0 ncs
-    | Just (htv,ncs) <- isHighCard      cs = Hand HighCard      (HV htv) 0 ncs
+    | Just x <- isRoyalFlush    cs = x
+    | Just x <- isStraightFlush cs = x
+    | Just x <- isFourOfAKind   cs = x
+    | Just x <- isFullHouse     cs = x
+    | Just x <- isFlush         cs = x
+    | Just x <- isStraight      cs = x
+    | Just x <- isThreeOfAKind  cs = x
+    | Just x <- isTwoPair       cs = x
+    | Just x <- isOnePair       cs = x
+    | Just x <- isHighCard      cs = x
 
 
     -- Return all the HandTypes that the given cards constitute
     -- and their carachteristic fields and their actual 5 cards
+--whatIs :: [Card] -> [Hand]
+--whatIs cs = concat [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
+--    where rF = hTCard isRoyalFlush    HS RoyalFlush
+--          sF = hTCard isStraightFlush HT StraightFlush
+--          fK = hTCard isFourOfAKind   HV FourOfAKind
+--          fH = hTCard isFullHouse     HL FullHouse
+--          fl = hTCard isFlush         HS Flush
+--          st = hTCard isStraight      HV Straight
+--          tK = hTCard isThreeOfAKind  HV ThreeOfAKind
+--          tP = hTCard isTwoPair       HL TwoPair
+--          oP = hTCard isOnePair       HV OnePair
+--          hC = hTCard isHighCard      HV HighCard
+--
+--          hTCard :: ([Card] -> Maybe (a,[Card])) -> (a -> HandTypesField) -> HandType -> [Hand]
+--          hTCard hTChecker constructor hT = maybe [] hander $ hTChecker cs
+--            where hander (x,ncs) = [Hand hT (constructor x) 0 ncs]
+
 whatIs :: [Card] -> [Hand]
 whatIs cs = concat [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
-    where rF = hTCard isRoyalFlush    HS RoyalFlush
-          sF = hTCard isStraightFlush HT StraightFlush
-          fK = hTCard isFourOfAKind   HV FourOfAKind
-          fH = hTCard isFullHouse     HL FullHouse
-          fl = hTCard isFlush         HS Flush
-          st = hTCard isStraight      HV Straight
-          tK = hTCard isThreeOfAKind  HV ThreeOfAKind
-          tP = hTCard isTwoPair       HL TwoPair
-          oP = hTCard isOnePair       HV OnePair
-          hC = hTCard isHighCard      HV HighCard
+    where rF = hTCard isRoyalFlush
+          sF = hTCard isStraightFlush
+          fK = hTCard isFourOfAKind
+          fH = hTCard isFullHouse
+          fl = hTCard isFlush
+          st = hTCard isStraight
+          tK = hTCard isThreeOfAKind
+          tP = hTCard isTwoPair
+          oP = hTCard isOnePair
+          hC = hTCard isHighCard
 
-          hTCard :: ([Card] -> Maybe (a,[Card])) -> (a -> HandTypesField) -> HandType -> [Hand]
-          hTCard hTChecker constructor hT = maybe [] hander $ hTChecker cs
-            where hander (x,ncs) = [Hand hT (constructor x) 0 ncs]
+          hTCard :: ([Card] -> Maybe Hand) -> [Hand]
+          hTCard hTChecker = maybe [] (\x->[x]) $ hTChecker cs
 
 
 
 ---- 2 - SINGLE HANDTYPE CHECKERS ----------------------------------------------
 
+isRoyalFlush, isStraightFlush, isFourOfAKind, isFullHouse, isFlush, isStraight, isThreeOfAKind, isTwoPair, isOnePair, isHighCard :: [Card] -> Maybe Hand
+
     -- Return the Value of the highest card and the 5 highest cards
     -- This will always be true; the Maybe is there just for consistency
-isHighCard :: [Card] -> Maybe (Value,[Card])
-isHighCard = Just . vAndFive . sort
-    where vAndFive scs = (value $ last scs, take 5 scs)
+--isHighCard :: [Card] -> Maybe (Value,[Card])
+--isHighCard = Just . vAndFive . sort
+--    where vAndFive scs = (value $ last scs, take 5 scs)
+
+isHighCard = Just . valAndFive . sort
+    where valAndFive scs = Hand HighCard (HV . value $ last scs) 0 (take 5 scs)
 
 
     -- Return the Value of the N-plet and its 5 constituting cards
-isOnePair, isThreeOfAKind, isFourOfAKind :: [Card] -> Maybe (Value,[Card])
-isOnePair      = isNplet 2
-isThreeOfAKind = isNplet 3
-isFourOfAKind  = isNplet 4
+--isOnePair, isThreeOfAKind, isFourOfAKind :: [Card] -> Maybe (Value,[Card])
+--isOnePair      = isNplet 2
+--isThreeOfAKind = isNplet 3
+--isFourOfAKind  = isNplet 4
 
 -- CONSIDER THESE VERSIONS OR THE LAST PART INGLOBATED IN isNplet
---isOnePair, isThreeOfAKind, isFourOfAKind :: [Card] -> Maybe Hand
---isOnePair      cs = (isNplet 2 cs) >>= (\(val,ncs)-> Just $ Hand OnePair      (HV val) 0 ncs)
---isThreeOfAKind cs = (isNplet 3 cs) >>= (\(val,ncs)-> Just $ Hand ThreeOfAKind (HV val) 0 ncs)
---isFourOfAKind  cs = (isNplet 4 cs) >>= (\(val,ncs)-> Just $ Hand FourOfAKind  (HV val) 0 ncs)
+isOnePair      cs = (isNplet 2 cs) >>= (\(val,ncs)-> Just $ Hand OnePair      (HV val) 0 ncs)
+isThreeOfAKind cs = (isNplet 3 cs) >>= (\(val,ncs)-> Just $ Hand ThreeOfAKind (HV val) 0 ncs)
+isFourOfAKind  cs = (isNplet 4 cs) >>= (\(val,ncs)-> Just $ Hand FourOfAKind  (HV val) 0 ncs)
 
 
     -- Return the Values of the N-Plets in descending order and their 5 constituting cards
-isTwoPair, isFullHouse :: [Card] -> Maybe ([Value],[Card])
-isTwoPair   = is2Nplet 2 2
-isFullHouse = is2Nplet 3 2
+--isTwoPair, isFullHouse :: [Card] -> Maybe ([Value],[Card])
+--isTwoPair   = is2Nplet 2 2
+--isFullHouse = is2Nplet 3 2
+
+isTwoPair   cs = (is2Nplet 2 2 cs) >>= (\(vals,ncs)-> Just $ Hand TwoPair   (HL vals) 0 ncs)
+isFullHouse cs = (is2Nplet 3 2 cs) >>= (\(vals,ncs)-> Just $ Hand FullHouse (HL vals) 0 ncs)
 
 
     -- Returns the value of the highest card in the Straight and its constituting cards
-isStraight :: [Card] -> Maybe (Value,[Card])
-isStraight cs = isLenType 5 value $ inOrder cs
+--isStraight :: [Card] -> Maybe (Value,[Card])
+--isStraight cs = isLenType 5 value $ inOrder cs
+
+isStraight cs = (isLenType 5 value $ inOrder cs) >>= hander
+    where hander (val, ncs) = Just $ Hand Straight (HV val) 0 ncs
 
 
     -- Returns the Suit of the Flush and its constituting cards
-isFlush :: [Card] -> Maybe (Suit,[Card])
-isFlush cs = isLenType 5 suit $ suitDescGroups cs
+--isFlush :: [Card] -> Maybe (Suit,[Card])
+--isFlush cs = isLenType 5 suit $ suitDescGroups cs
 
+isFlush cs = (isLenType 5 suit $ suitDescGroups cs) >>= hander
+    where hander (sui, ncs) = Just $ Hand Flush (HS sui) 0 ncs
 
     -- Returns the Suit and the Value of the highest card in the StraightFlush and its constituting cards
     -- Does not simply return a Card (which has the same fields) for pattern matching's sake
     -- NOTE: The first pattern match could have also been the real isStraight,
     --       but inOrder would have been applied twice (not as efficient)
-isStraightFlush :: [Card] -> Maybe ((Suit,Value),[Card])
+--isStraightFlush :: [Card] -> Maybe ((Suit,Value),[Card])
+--isStraightFlush cs
+--    | Just (val,ncs) <- isStraight' , Just (sui,ncs) <- isFlush hocs = Just ((sui, val),ncs)
+--    | otherwise = Nothing
+--        where hocs = head ocs
+--              isStraight' = isLenType 5 value ocs
+--              ocs = inOrder cs
+
 isStraightFlush cs
-    | Just (val,ncs) <- isStraight' , Just (sui,ncs) <- isFlush hocs = Just ((sui, val),ncs)
+    | Just (val, ncs) <- isStraight' ,
+      Just (Hand _ (HS sui) _ ncs) <- isFlush hocs =
+                  Just $ Hand StraightFlush (HT (sui, val)) 0 ncs
     | otherwise = Nothing
         where hocs = head ocs
               isStraight' = isLenType 5 value ocs
@@ -125,10 +175,14 @@ isStraightFlush cs
 
     -- Returns the Suit of the RoyalFlush and its constituting cards
     -- (If Suit hierarchy were implemented, it could only be Hearts)
-isRoyalFlush :: [Card] -> Maybe (Suit,[Card])
+--isRoyalFlush :: [Card] -> Maybe (Suit,[Card])
+--isRoyalFlush cs = case isStraightFlush cs of
+--    Just ((s,Ace),ncs) -> Just (s, ncs)
+--    _                  -> Nothing
+
 isRoyalFlush cs = case isStraightFlush cs of
-    Just ((s,Ace),ncs) -> Just (s, ncs)
-    _                  -> Nothing
+    Just (Hand _ (HT (s,Ace)) _ ncs) -> Just $ Hand RoyalFlush (HS s) 0 ncs
+    _                                -> Nothing
 
 
 
