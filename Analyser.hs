@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.26 - 15-16/04/2015
+--          0.27 - 18-19/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -35,7 +35,6 @@ import HandRankings
 --import Probabilities
 
 import Data.List (sort, sortBy, groupBy, maximumBy, group, partition, find)
-import qualified Data.Map as M (lookup, fromList)
 import Data.Function (on)
 
 
@@ -106,10 +105,6 @@ shellCommand s cmd = case cmd of
                     "Revoked last action: " ++ (show . action $ head s))
 
     -- Card related commands start with p
-        -- Discard n cards (it can happen)
-    ('c':'d':' ':n) ->
-                (discard s (read n :: Int),
-                    "Discarded " ++ n ++ " cards")
         -- Set initial hand
     ('c':'i':' ':v1:s1:' ':v2:s2:_) ->
                 cardHandler s StartHand [[v1,s1],[v2,s2]]
@@ -186,7 +181,6 @@ help = " \n\
 \   b               Back one action \n\
 \ \n\
 \   -- Card related commands start with p \n\
-\   cd <Int>                Discard n cards \n\
 \   ci <value><suit>(x2)    Set initial hand \n\
 \   cf <value><suit>(x3)    Flop \n\
 \   ct <value><suit>        Turn \n\
@@ -249,26 +243,17 @@ setDealer s@(f:_) x = case find ((== x) . num) $ players f of
 
     -- Give out two cards per player
 startHand :: State -> [Card] -> State
-startHand s@(f:_) ucs = addFrame s $ [("action", FA (StartHand ucs)), ("cardsInDeck", FI ndcs)] ++ nUsrTabl
-    where ndcs = (cardsInDeck f) - 2 * (playersNum f)
+startHand s@(f:_) ucs = addFrame s $ [("action", FA (StartHand ucs)), ("deck", FD nd)] ++ nUsrTabl
+    where nd = newDeck (deck f) ucs
           nUsrTabl = updatePlayerAndTable f (userNum f) ucs []
-
-
-    -- Discard n cards (for some reason)
-discard :: State -> Int -> State
-discard s@(f:_) n = addFrame s [("action", FA (Discard n)), ("cardsInDeck", FI ndcs)]
-    where ndcs = (cardsInDeck f) - n
 
 
     -- Add some cards to the table (Flop, Turn, River) and recalculate the user's Hand
 addCards :: State -> ([Card] -> Action) -> [Card] -> State
-addCards s@(f:_) act tcs = addFrame s $ [("action", FA nAct), ("cardsInDeck", FI ndcs)] ++ nUsrTabl
-    where ndcs = (cardsInDeck f) - (length tcs) - discdCs
+addCards s@(f:_) act tcs = addFrame s $ [("action", FA nAct), ("deck", FD nd)] ++ nUsrTabl
+    where nd = newDeck (deck f) tcs
           nAct = act tcs
           nUsrTabl = updatePlayerAndTable f (userNum f) [] tcs
-          discdCs = case nAct of
-            Flop _ -> 3
-            _      -> 1
 
 
     -- Player x Folds
@@ -350,38 +335,6 @@ roundEnd s@(f:_)
 
 ---- 3 - SHELL DATA MANIPULATION FUNCTIONS -------------------------------------
 
-newPlayer :: Player -> [(String, PlayerField)] -> Player
-newPlayer pl fieldList = (Player no ba op st cs hh)
-    where no = newField num      fromPI "num"
-          ba = newField balance  fromPI "balance"
-          op = newField onPlate  fromPI "onPlate"
-          st = newField status   fromPA "status"
-          cs = newField hisCards fromPC "hisCards"
-          hh = newField hisHand  fromPH "hisHand"
-
-          newField :: (Player -> a) -> (PlayerField -> a) -> String -> a
-          newField field extractor key =
-                maybe (field pl) extractor . M.lookup key $ M.fromList fieldList
-
-
-    -- Add a new Frame to the State by providing only the fields which change
-    -- with respect to the previous one
-addFrame :: State -> [(String, FrameField)] -> State
-addFrame s@(f:_) fieldList = (Frame act plN usN dea dCN tab plt pls):s
-    where act = newField action      fromFA "action"
-          plN = newField playersNum  fromFI "playersNum"
-          usN = newField userNum     fromFI "userNum"
-          dea = newField dealer      fromFI "dealer"
-          dCN = newField cardsInDeck fromFI "cardsInDeck"
-          tab = newField table       fromFC "table"
-          plt = newField plate       fromFI "plate"
-          pls = newField players     fromFP "players"
-
-          newField :: (Frame -> a) -> (FrameField -> a) -> String -> a
-          newField field extractor key =
-                maybe (field f) extractor . M.lookup key $ M.fromList fieldList
-
-
     -- Take cards in shorthand as input, and if correct, execute a StartHand, Flop,
     -- Turn or River
 cardHandler :: State -> ([Card] -> Action) -> [String] -> (State,String)
@@ -406,7 +359,7 @@ fieldHandler s@(f:_) funcStr = (s, msg)
             "playersNum"  -> val playersNum
             "userNum"     -> val userNum
             "dealer"      -> val dealer
-            "cardsInDeck" -> val cardsInDeck
+            "deck"        -> val deck
             "table"       -> val table
             "plate"       -> val plate
             "players"     -> val players

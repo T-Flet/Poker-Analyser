@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.10 - 13-14/04/2015
+--          0.11 - 18-19/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -26,9 +26,10 @@ module DataTypes where
 
 import GeneralFunctions (descLength)
 
-import Data.List (sort, sortBy, groupBy)
+import Data.List (sort, sortBy, groupBy, splitAt)
 import Data.Char (toLower)
 import Data.Function (on)
+import qualified Data.Map as M (lookup, fromList)
 
 
 
@@ -228,8 +229,13 @@ data PlayerField = PI Int | PA Action | PC [Card] | PH Hand
                 deriving (Eq, Show)
 
 
+    -- NOTE: The Deck also includes all the cards in other players' hands and discarded ones
+data Deck = Deck {cardsIn :: Int, valuesIn :: [Int], suitsIn :: [Int]}
+                deriving (Eq, Show)
+
+
 data Frame = Frame {action :: Action, playersNum :: Int, userNum :: Int,
-                    dealer :: Int, cardsInDeck :: Int, table :: [Card],
+                    dealer :: Int, deck :: Deck, table :: [Card],
                     plate :: Int, players :: [Player]}
                 deriving (Eq)
                     -- The actual player is the first (0) in players list
@@ -240,13 +246,13 @@ instance Show Frame where
                         ("Players Number: ",    show . playersNum),
                         ("User Number: ",       show . userNum),
                         ("Dealer ID: ",         show . dealer),
-                        ("Cards in deck: ",     show . cardsInDeck),
+                        ("Deck: ",              show . deck),
                         ("Cards on table: ",    show . table),
                         ("Amount on plate: ",   show . plate),
                         ("Players' Status: ",   show . players) ]
 
 
-data FrameField = FA Action | FI Int | FC [Card] | FP [Player]
+data FrameField = FA Action | FI Int | FD Deck | FC [Card] | FP [Player]
                 deriving (Eq, Show)
 
 
@@ -266,6 +272,7 @@ fromPH (PH x) = x
     -- Field Value Extractors
 fromFA (FA x) = x
 fromFI (FI x) = x
+fromFD (FD x) = x
 fromFC (FC x) = x
 fromFP (FP x) = x
 
@@ -275,6 +282,11 @@ initialPlayer :: Int -> Player
 initialPlayer nu = Player nu 0 0 Idle [] (Hand HighCard (HV Two) 0 [])
 
 
+    -- Starting Deck
+initialDeck :: Deck
+initialDeck = Deck 52 (replicate 13 4) (replicate 4 13)
+
+
     -- The User's Cards
 myCards :: Frame -> [Card]
 myCards f = hisCards . head . filter ((== userNum f) . num) $ players f
@@ -282,7 +294,64 @@ myCards f = hisCards . head . filter ((== userNum f) . num) $ players f
 
     -- Starting State
 initialState :: State
-initialState = [Frame GameStart 0 0 0 52 [] 0 []]
+initialState = [Frame GameStart 0 0 0 initialDeck [] 0 []]
+
+
+    -- Generate a Player by providing only the fields which change
+    -- with respect to the previous one
+newPlayer :: Player -> [(String, PlayerField)] -> Player
+newPlayer pl fieldList = (Player no ba op st cs hh)
+    where no = newField num      fromPI "num"
+          ba = newField balance  fromPI "balance"
+          op = newField onPlate  fromPI "onPlate"
+          st = newField status   fromPA "status"
+          cs = newField hisCards fromPC "hisCards"
+          hh = newField hisHand  fromPH "hisHand"
+
+          newField :: (Player -> a) -> (PlayerField -> a) -> String -> a
+          newField field extractor key =
+                maybe (field pl) extractor . M.lookup key $ M.fromList fieldList
+
+
+    -- Add a new Frame to the State by providing only the fields which change
+    -- with respect to the previous one
+addFrame :: State -> [(String, FrameField)] -> State
+addFrame s@(f:_) fieldList = (Frame act plN usN dea dCN tab plt pls):s
+    where act = newField action      fromFA "action"
+          plN = newField playersNum  fromFI "playersNum"
+          usN = newField userNum     fromFI "userNum"
+          dea = newField dealer      fromFI "dealer"
+          dCN = newField deck        fromFD "deck"
+          tab = newField table       fromFC "table"
+          plt = newField plate       fromFI "plate"
+          pls = newField players     fromFP "players"
+
+          newField :: (Frame -> a) -> (FrameField -> a) -> String -> a
+          newField field extractor key =
+                maybe (field f) extractor . M.lookup key $ M.fromList fieldList
+
+
+    -- Generate a new Deck by providing the cards which have been taken out from
+    -- the previous one
+newDeck :: Deck -> [Card] -> Deck
+newDeck d cs = foldr takeOut d cs
+    where takeOut (Card v s) (Deck ci vsi ssi) = Deck nCi nVsi nSsi
+            where nCi = ci - 1
+                  nVsi = (init bvs) ++ ((last bvs) - 1):avs
+                  (bvs,avs) = splitAt (1 + fromEnum v) vsi
+                  nSsi = (init bss) ++ ((last bss) - 1):ass
+                  (bss,ass) = splitAt (1 + fromEnum s) ssi
+
+
+
+
+
+
+
+
+
+
+
 
 
 
