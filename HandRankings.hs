@@ -191,8 +191,8 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 
     -- Return the number of possible RoyalFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
-countRoyalFlush :: [Card] -> (Int,[[Card]])
-countRoyalFlush cs
+countRoyalFlush :: Deck -> [Card] -> (Int,[[Card]])
+countRoyalFlush d cs
 --    | null cs            = (4, fromSuiVal (enumFrom Spades) ovs)
     | okVals && sameSuit = (1, [(head $ fromSuiVal [suit $ head cs] ovs) \\ cs])
     | otherwise          = (0, [])
@@ -203,8 +203,8 @@ countRoyalFlush cs
 
     -- Return the number of possible StraightFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
-countStraightFlush :: [Card] -> (Int,[[Card]])
-countStraightFlush cs
+countStraightFlush :: Deck -> [Card] -> (Int,[[Card]])
+countStraightFlush d cs
 --    | null cs            = (40, concat $ map (fromSuiVal (enumFrom Spades)) ovs)
     | okVals && sameSuit = (length possHands, map (\\ cs) possHands)
     | otherwise          = (0, [])
@@ -216,8 +216,8 @@ countStraightFlush cs
 
     -- Return the number of possible FourOfAKinds which can be formed by
     -- completing the hand of the given cards and which cards are required
-countFourOfAKind :: [Card] -> (Int,[[Card]])
-countFourOfAKind cs
+countFourOfAKind :: Deck -> [Card] -> (Int,[[Card]])
+countFourOfAKind d cs
 --    | null cs   = (13, fromValSui (enumFrom Two) (enumFrom Spades))
     | okVals    = if (length h) == 1
                     then (2, [(left h), left l])
@@ -232,8 +232,8 @@ countFourOfAKind cs
 
     -- Return the number of possible FullHouses which can be formed by
     -- completing the hand of the given cards and which cards are required
---countFullHouse :: [Card] -> (Int,[[Card]])
---countFullHouse cs
+--countFullHouse :: Deck -> [Card] -> (Int,[[Card]])
+--countFullHouse d cs
 ----    | null cs   = (13*12, concat . map (\x y-> [[x,x,x,y,y],[y,y,y,x,x])) . ...
 --    | okVals    = case length vgcs of
 --                    1 -> (12, )
