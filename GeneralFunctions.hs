@@ -31,6 +31,7 @@ import Data.Function (on)
 
     -- Classic mathematical function
 choose :: Integral a => a -> a -> Int
+infixl 5 `choose`
 n `choose` k = fromIntegral $ product [k+1..n] `div` product [1..n-k]
 
 

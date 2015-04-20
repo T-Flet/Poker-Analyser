@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.8 - 15-16/04/2015
+--          0.9 - 20-21/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -28,7 +28,7 @@ module HandRankings where
 
 import DataTypes
 import HandTypeCheckers
-import GeneralFunctions (combinations, subsetOf, descLength)
+import GeneralFunctions (choose, combinations, subsetOf, descLength)
 
 import Data.Function (on)
 import Data.List (groupBy, (\\), sortBy, sort, tails)
@@ -200,6 +200,20 @@ countRoyalFlush d cs
               sameSuit = length (groupBy ((==) `on` suit) cs) == 1
               ovs = enumFrom Ten
 
+    -- THIS VERSION RETURNS HOW MANY SUCH HandTypes ARE POSSIBLE AND THE LIST
+    -- OF EACH INSTANCE'S PROBABILITY (OR PERHAPS JUST THE CUMULATIVE ONE)
+    -- IT WORKS UNDER THE ASSUMPTION THAT NO MORE THAN 7 CARDS WILL EVER BE AVAILABLE
+    -- PERHAPS IN ANOTHER FUNCTION: IF AN INSTANCE ALREADY EXISTS, DO THE WORK FOR BETTER ONES
+countRoyalFlush' :: (Fractional a) => Deck -> [Card] -> (Int,[a])
+countRoyalFlush' d cs
+    | csLeft > 0 = (length possSuits, map handProb possSuits)
+    | otherwise  = (0,[])
+        where handProb hcs = 1 / fromIntegral ((cardsIn d) `choose` (5 - length hcs))
+              okVals = not $ null possSuits
+              possSuits = filter ((<= 5 - csLeft) . length) sgs
+              csLeft = 7 - length cs
+              sgs = suitDescGroups $ filter ((`elem` ovs) . value) cs
+              ovs = enumFrom Ten
 
     -- Return the number of possible StraightFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
