@@ -210,7 +210,7 @@ countRoyalFlush' d cs
     | otherwise  = (0,[])
         where handProb hcs = 1 / fromIntegral ((cardsIn d) `choose` (5 - length hcs))
               okVals = not $ null possSuits
-              possSuits = filter ((<= 5 - csLeft) . length) sgs
+              possSuits = filter ((>= 5 - csLeft) . length) sgs
               csLeft = 7 - length cs
               sgs = suitDescGroups $ filter ((`elem` ovs) . value) cs
               ovs = enumFrom Ten
