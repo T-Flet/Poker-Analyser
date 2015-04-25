@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.1 - 31/03/2015
+--          0.2 - 24-25/04/2015
 --
 --      Description:
 --          This package contains general functions which can be useful in many
@@ -29,10 +29,17 @@ import Data.Function (on)
 
 ---- 1 - MATHEMATICAL FUNCTIONS ------------------------------------------------
 
-    -- Classic mathematical function
+    -- Classic mathematical function; safe Type management
 choose :: Integral a => a -> a -> a
 infixl 5 `choose`
-n `choose` k = product [k+1..n] `div` product [1..n-k]
+n `choose` k = fromIntegral $ product [sk+1..sn] `div` product [1..sn-sk]
+    where [sn,sk] = map fromIntegral [n,k]
+
+
+    -- Classic mathematical function; variable Integral Type; be careful
+chooseUnsafe :: Integral a => a -> a -> a
+infixl 5 `chooseUnsafe`
+n `chooseUnsafe` k = product [k+1..n] `div` product [1..n-k]
 
 
     -- Return all the "choose" combinations of length k from a list of length n
