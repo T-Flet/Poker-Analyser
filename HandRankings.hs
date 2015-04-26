@@ -188,7 +188,6 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 --          hC = (HighCard,      countHighCard      cs)
 
 
-
     -- Return the number of possible RoyalFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
 countRoyalFlush :: Deck -> [Card] -> (Int,[[Card]])
@@ -200,10 +199,9 @@ countRoyalFlush d cs
               sameSuit = length (groupBy ((==) `on` suit) cs) == 1
               ovs = enumFrom Ten
 
-    -- THIS VERSION RETURNS HOW MANY SUCH HandTypes ARE POSSIBLE AND THE LIST
-    -- OF EACH INSTANCE'S PROBABILITY (OR PERHAPS JUST THE CUMULATIVE ONE)
-    -- IT WORKS UNDER THE ASSUMPTION THAT NO MORE THAN 7 CARDS WILL EVER BE AVAILABLE
-    -- PERHAPS IN ANOTHER FUNCTION: IF AN INSTANCE ALREADY EXISTS, DO THE WORK FOR BETTER ONES
+    -- DIFFERENT/BETTER VERSION
+    -- Return the number of possible instances of RoyalFlush which can be
+    -- obtained by completing the 7 cards and the probability of each instance
 countRoyalFlush' :: (Fractional a) => Deck -> [Card] -> (Int,[a])
 countRoyalFlush' d cs
     | csLeft > 0 = (length possSuits, map handProb possSuits)
@@ -214,6 +212,21 @@ countRoyalFlush' d cs
               csLeft = 7 - length cs
               sgs = suitDescGroups $ filter ((`elem` ovs) . value) cs
               ovs = enumFrom Ten
+
+    -- HOPEFULLY FINAL VERSION
+    -- Return the list of possible instances of RoyalFlush which can be obtained
+    -- by completing the 7 cards grouped by their probabilities:
+    -- the returned list is of tuples of the form
+    -- (numberOfInstancesWithThisProbability, probability, CardSet)
+    --  PERHAPS THE FIRST INTEGER COULD BE AVOIDED AS IT CAN BE CALCULATED FROM
+    --  THE CardSet...
+countRoyalFlush'' :: (Fractional a) => Deck -> [Card] -> [(Int,a,CardSet)]
+countRoyalFlush'' d cs
+
+
+
+
+
 
     -- Return the number of possible StraightFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
