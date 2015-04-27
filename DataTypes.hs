@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.11 - 18-19/04/2015
+--          0.12 - 27/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -26,7 +26,7 @@ module DataTypes where
 
 import GeneralFunctions (descLength)
 
-import Data.List (sort, sortBy, groupBy, splitAt)
+import Data.List (sort, sortBy, groupBy, splitAt, intersect, union)
 import Data.Char (toLower)
 import Data.Function (on)
 import qualified Data.Map as M (lookup, fromList)
@@ -59,7 +59,7 @@ instance Enum Card where
 
 
 data CardSet = CC Int [Card] | CB Int (Value,Value) | CV Int Value | CS Int Suit
-            | CN | CA CardSet CardSet | CO CardSet CardSet | CX CardSet CardSet
+            | CN | CA CardSet CardSet | CO CardSet CardSet
                 deriving (Eq)
 instance Show CardSet where
     show (CC 1 x) = "Any 1 of " ++ show x
@@ -75,7 +75,6 @@ instance Show CardSet where
 
     show (CA c1 c2) = "Both "   ++ show c1 ++ " and " ++ show c2
     show (CO c1 c2) = "Either " ++ show c1 ++ " or "  ++ show c2
-    show (CX c1 c2) = "Just one of " ++ show c1 ++ " xor " ++ show c2
 
 
 
@@ -153,10 +152,24 @@ groupCardsBy suitOrValue = groupBy ((==) `on` suitOrValue) . reverse
 
     -- Transform a CardSet into its equivalent list of Cards
 fromCardSet :: CardSet -> [Card]
-fromCardSet (CC n cs) = cs
+fromCardSet (CC n cs)    = cs
 fromCardSet (CB n (f,l)) = concat $ fromValSui (enumFromTo f l) (enumFrom Spades)
-fromCardSet (CV n v)  = head . fromValSui [v] $ enumFrom Spades
-fromCardSet (CS n s)  = enumFromTo (Card Two s) (Card Ace s)
+fromCardSet (CV n v)     = head . fromValSui [v] $ enumFrom Spades
+fromCardSet (CS n s)     = enumFromTo (Card Two s) (Card Ace s)
+fromCardSet CN           = []
+fromCardSet (CA a b)     = (intersect `on` fromCardSet) a b
+fromCardSet (CO a b)     = (union `on` fromCardSet) a b
+
+
+    -- Return the length of a CardSet more efficiently than counting its cards
+lengthCardSet :: CardSet -> Int
+lengthCardSet (CC n cs)    = length cs
+lengthCardSet (CB n (f,l)) = 4 * (fromEnum l - fromEnum f)
+lengthCardSet (CV n v)     = 4
+lengthCardSet (CS n s)     = 13
+lengthCardSet CN           = 0
+lengthCardSet (CA a b)     = abs $ ((-) `on` lengthCardSet) a b
+lengthCardSet (CO a b)     = ((+) `on` lengthCardSet) a b
 
 
 

@@ -220,9 +220,16 @@ countRoyalFlush' d cs
     -- (numberOfInstancesWithThisProbability, probability, CardSet)
     --  PERHAPS THE FIRST INTEGER COULD BE AVOIDED AS IT CAN BE CALCULATED FROM
     --  THE CardSet...
-countRoyalFlush'' :: (Fractional a) => Deck -> [Card] -> [(Int,a,CardSet)]
-countRoyalFlush'' d cs
-
+--countRoyalFlush'' :: (Fractional a) => Deck -> [Card] -> [(Int,a,CardSet)]
+--countRoyalFlush'' d cs
+--    | csLeft > 0 = (length possSuits, map handProb possSuits)
+--    | otherwise  = []
+--        where handProb hcs = 1 / fromIntegral ((cardsIn d) `choose` (5 - length hcs))
+--              okVals = not $ null possSuits
+--              possSuits = filter ((>= 5 - csLeft) . length) sgs
+--              csLeft = 7 - length cs
+--              sgs = suitDescGroups $ filter ((`elem` ovs) . value) cs
+--              ovs = enumFrom Ten
 
 
 
