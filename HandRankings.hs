@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.9 - 20-21/04/2015
+--          0.10 - 27-28/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -31,7 +31,7 @@ import HandTypeCheckers
 import GeneralFunctions (choose, combinations, subsetOf, descLength)
 
 import Data.Function (on)
-import Data.List (groupBy, (\\), sortBy, sort, tails)
+import Data.List (group, groupBy, (\\), sortBy, sort, tails)
 
 
 
@@ -188,48 +188,22 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 --          hC = (HighCard,      countHighCard      cs)
 
 
-    -- Return the number of possible RoyalFlushes which can be formed by
-    -- completing the hand of the given cards and which cards are required
-countRoyalFlush :: Deck -> [Card] -> (Int,[[Card]])
+    -- Return the HandTypeCount of possible instances of RoyalFlush which can be
+    -- obtained by completing the set of 7 cards
+    --  PERHAPS THE FIRST INTEGER COULD BE AVOIDED AS IT CAN BE CALCULATED FROM
+    --  THE PROBABILITY TUPLES...
+countRoyalFlush :: (Fractional a) => Deck -> [Card] -> HandTypeCount
 countRoyalFlush d cs
---    | null cs            = (4, fromSuiVal (enumFrom Spades) ovs)
-    | okVals && sameSuit = (1, [(head $ fromSuiVal [suit $ head cs] ovs) \\ cs])
-    | otherwise          = (0, [])
-        where okVals   = all ((`elem` ovs) . value) cs
-              sameSuit = length (groupBy ((==) `on` suit) cs) == 1
-              ovs = enumFrom Ten
-
-    -- DIFFERENT/BETTER VERSION
-    -- Return the number of possible instances of RoyalFlush which can be
-    -- obtained by completing the 7 cards and the probability of each instance
-countRoyalFlush' :: (Fractional a) => Deck -> [Card] -> (Int,[a])
-countRoyalFlush' d cs
-    | csLeft > 0 = (length possSuits, map handProb possSuits)
-    | otherwise  = (0,[])
-        where handProb hcs = 1 / fromIntegral ((cardsIn d) `choose` (5 - length hcs))
-              okVals = not $ null possSuits
+    | csLeft > 0 = HandTypeCount RoyalFlush (length possSuits) (CC 3 neededCs) countTuples
+    | otherwise  = HandTypeCount RoyalFlush 0 CN []
+        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
+              hProbs = map handProb possSuits
+              handProb hcs = 1 / fromIntegral ((cardsIn d) `choose` (5 - length hcs))
+              neededCs = concat $ map (\scs-> [Card v (suit $ head scs) | v <- ovs] \\ scs) possSuits
               possSuits = filter ((>= 5 - csLeft) . length) sgs
               csLeft = 7 - length cs
               sgs = suitDescGroups $ filter ((`elem` ovs) . value) cs
               ovs = enumFrom Ten
-
-    -- HOPEFULLY FINAL VERSION
-    -- Return the list of possible instances of RoyalFlush which can be obtained
-    -- by completing the 7 cards grouped by their probabilities:
-    -- the returned list is of tuples of the form
-    -- (numberOfInstancesWithThisProbability, probability, CardSet)
-    --  PERHAPS THE FIRST INTEGER COULD BE AVOIDED AS IT CAN BE CALCULATED FROM
-    --  THE CardSet...
---countRoyalFlush'' :: (Fractional a) => Deck -> [Card] -> [(Int,a,CardSet)]
---countRoyalFlush'' d cs
---    | csLeft > 0 = (length possSuits, map handProb possSuits)
---    | otherwise  = []
---        where handProb hcs = 1 / fromIntegral ((cardsIn d) `choose` (5 - length hcs))
---              okVals = not $ null possSuits
---              possSuits = filter ((>= 5 - csLeft) . length) sgs
---              csLeft = 7 - length cs
---              sgs = suitDescGroups $ filter ((`elem` ovs) . value) cs
---              ovs = enumFrom Ten
 
 
 
@@ -237,8 +211,8 @@ countRoyalFlush' d cs
 
     -- Return the number of possible StraightFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
-countStraightFlush :: Deck -> [Card] -> (Int,[[Card]])
-countStraightFlush d cs
+countStraightFlushOLD :: Deck -> [Card] -> (Int,[[Card]])
+countStraightFlushOLD d cs
 --    | null cs            = (40, concat $ map (fromSuiVal (enumFrom Spades)) ovs)
     | okVals && sameSuit = (length possHands, map (\\ cs) possHands)
     | otherwise          = (0, [])
@@ -250,8 +224,8 @@ countStraightFlush d cs
 
     -- Return the number of possible FourOfAKinds which can be formed by
     -- completing the hand of the given cards and which cards are required
-countFourOfAKind :: Deck -> [Card] -> (Int,[[Card]])
-countFourOfAKind d cs
+countFourOfAKindOLD :: Deck -> [Card] -> (Int,[[Card]])
+countFourOfAKindOLD d cs
 --    | null cs   = (13, fromValSui (enumFrom Two) (enumFrom Spades))
     | okVals    = if (length h) == 1
                     then (2, [(left h), left l])

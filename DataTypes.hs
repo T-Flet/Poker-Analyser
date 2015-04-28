@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.12 - 27/04/2015
+--          0.13 - 27-28/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -59,6 +59,7 @@ instance Enum Card where
 
 
 data CardSet = CC Int [Card] | CB Int (Value,Value) | CV Int Value | CS Int Suit
+            | CSV Int [Suit] [Value] | CVS Int [Value] [Suit]
             | CN | CA CardSet CardSet | CO CardSet CardSet
                 deriving (Eq)
 instance Show CardSet where
@@ -68,6 +69,10 @@ instance Show CardSet where
     show (CV n x) = "Any " ++ show n ++ " " ++ show x ++ "s"
     show (CS 1 x) = "Any 1 " ++ (init $ show x)
     show (CS n x) = "Any " ++ show n ++ " " ++ show x
+
+    show (CSV n ss vs) = "Any " ++ show n ++ " of " ++ show ss ++ " of " ++ show vs
+    show (CVS n vs ss) = "Any " ++ show n ++ " of " ++ show vs ++ " of " ++ show ss
+
     show CN       = "No Cards"
 
     show (CB 1 (f,l)) = "Any 1 between " ++ show f ++ " and " ++ show l
@@ -152,24 +157,28 @@ groupCardsBy suitOrValue = groupBy ((==) `on` suitOrValue) . reverse
 
     -- Transform a CardSet into its equivalent list of Cards
 fromCardSet :: CardSet -> [Card]
-fromCardSet (CC n cs)    = cs
-fromCardSet (CB n (f,l)) = concat $ fromValSui (enumFromTo f l) (enumFrom Spades)
-fromCardSet (CV n v)     = head . fromValSui [v] $ enumFrom Spades
-fromCardSet (CS n s)     = enumFromTo (Card Two s) (Card Ace s)
-fromCardSet CN           = []
-fromCardSet (CA a b)     = (intersect `on` fromCardSet) a b
-fromCardSet (CO a b)     = (union `on` fromCardSet) a b
+fromCardSet (CC n cs)     = cs
+fromCardSet (CB n (f,l))  = concat $ fromValSui (enumFromTo f l) (enumFrom Spades)
+fromCardSet (CV n v)      = head . fromValSui [v] $ enumFrom Spades
+fromCardSet (CS n s)      = enumFromTo (Card Two s) (Card Ace s)
+fromCardSet (CSV n ss vs) = concat $ fromSuiVal ss vs
+fromCardSet (CVS n vs ss) = concat $ fromValSui vs ss
+fromCardSet CN            = []
+fromCardSet (CA a b)      = (intersect `on` fromCardSet) a b
+fromCardSet (CO a b)      = (union `on` fromCardSet) a b
 
 
     -- Return the length of a CardSet more efficiently than counting its cards
 lengthCardSet :: CardSet -> Int
-lengthCardSet (CC n cs)    = length cs
-lengthCardSet (CB n (f,l)) = 4 * (fromEnum l - fromEnum f)
-lengthCardSet (CV n v)     = 4
-lengthCardSet (CS n s)     = 13
-lengthCardSet CN           = 0
-lengthCardSet (CA a b)     = abs $ ((-) `on` lengthCardSet) a b
-lengthCardSet (CO a b)     = ((+) `on` lengthCardSet) a b
+lengthCardSet (CC n cs)     = length cs
+lengthCardSet (CB n (f,l))  = 4 * (fromEnum l - fromEnum f)
+lengthCardSet (CV n v)      = 4
+lengthCardSet (CS n s)      = 13
+lengthCardSet (CSV n ss vs) = length ss * length vs
+lengthCardSet (CVS n vs ss) = length vs * length ss
+lengthCardSet CN            = 0
+lengthCardSet (CA a b)      = abs $ ((-) `on` lengthCardSet) a b
+lengthCardSet (CO a b)      = ((+) `on` lengthCardSet) a b
 
 
 
@@ -187,6 +196,13 @@ instance Show HandTypesField where
    show (HS x) = show x
    show (HL x) = show x
    show (HT x) = show x
+
+
+data HandTypeCount = HandTypeCount {cType :: HandType, count :: Int, needed :: CardSet, probs :: [(Int,Float)]}
+                deriving (Eq, Show)
+                    -- needed are all the cards which, if drawn by themselves
+                    -- (only one of them), will get the already out cards closer
+                    -- to the intended HandType or a better instance of it
 
 
 data Hand = Hand {hType :: HandType, hTField :: HandTypesField, rank :: Int, cards :: [Card]}
