@@ -73,7 +73,7 @@ instance Show CardSet where
     show (CSV n ss vs) = "Any " ++ show n ++ " of " ++ show ss ++ " of " ++ show vs
     show (CVS n vs ss) = "Any " ++ show n ++ " of " ++ show vs ++ " of " ++ show ss
 
-    show CN       = "No Cards"
+    show CN = "No Cards"
 
     show (CB 1 (f,l)) = "Any 1 between " ++ show f ++ " and " ++ show l
     show (CB n (f,l)) = show n ++ " between " ++ show f ++ " and " ++ show l
@@ -200,7 +200,7 @@ instance Show HandTypesField where
 
 data HandTypeCount = HandTypeCount {cType :: HandType, count :: Int, needed :: CardSet, probs :: [(Int,Float)]}
                 deriving (Eq, Show)
-                    -- needed are all the cards which, if drawn by themselves
+                    -- "needed" is all the cards which, if drawn by themselves
                     -- (only one of them), will get the already out cards closer
                     -- to the intended HandType or a better instance of it
 

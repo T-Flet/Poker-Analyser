@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.10 - 27-28/04/2015
+--          0.11 - 28-29/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -36,11 +36,6 @@ import Data.List (group, groupBy, (\\), sortBy, sort, tails)
 
 
 ---- 1 - COMPLETE RANKERS ------------------------------------------------------
-
-    -- These rankers do not take any Suit hierarchy into account, therefore
-    -- there are gaps in the ranks, which do not affect any process whatsoever.
-    -- Also, these functions work under the assumption that the given hand is
-    -- of the correct HandType
 
     -- Given two sets of cards (preferably of 5 cards each, i.e. hands) return
     -- an Ordering (by evaluating what HandType they constitute and ranking them)
@@ -84,6 +79,11 @@ rankHandType (Hand ht htf _ cs) = case ht of
 
 
 ---- 2 - SINGLE HANDTYPE RANKERS -----------------------------------------------
+
+    -- These rankers do not take any Suit hierarchy into account, therefore
+    -- there are gaps in the ranks, which do not affect any process whatsoever.
+    -- Also, these functions work under the assumption that the given hand is
+    -- of the correct HandType
 
     -- Given a RoyalFlush, return its rank among the existing ones
     -- NOTE: There are only 4, and are all equivalent (4/4)
@@ -174,18 +174,18 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 
 
     -- Apply all HandTypes' Instances Calculators to each subset of the given cards
---countHandTypes :: [Card] -> [(HandType,(Int,[[Card]]))]
+--countHandTypes :: [Card] -> [HandTypeCount]
 --countHandTypes cs = [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
---    where rF = (RoyalFlush,    countRoyalFlush    cs)
---          sF = (StraightFlush, countStraightFlush cs)
---          fK = (FourOfAKind,   countFourOfAKind   cs)
---          fH = (FullHouse,     countFullHouse     cs)
---          fl = (Flush,         countFlush         cs)
---          st = (Straight,      countStraight      cs)
---          tK = (ThreeOfAKind,  countThreeOfAKind  cs)
---          tP = (TwoPair,       countTwoPair       cs)
---          oP = (OnePair,       countOnePair       cs)
---          hC = (HighCard,      countHighCard      cs)
+--    where rF = countRoyalFlush    cs
+--          sF = countStraightFlush cs
+--          fK = countFourOfAKind   cs
+--          fH = countFullHouse     cs
+--          fl = countFlush         cs
+--          st = countStraight      cs
+--          tK = countThreeOfAKind  cs
+--          tP = countTwoPair       cs
+--          oP = countOnePair       cs
+--          hC = countHighCard      cs
 
 
     -- Return the HandTypeCount of possible instances of RoyalFlush which can be
@@ -206,8 +206,25 @@ countRoyalFlush d cs
               ovs = enumFrom Ten
 
 
-
-
+    -- Return the HandTypeCount of possible instances of RoyalFlush which can be
+    -- obtained by completing the set of 7 cards
+    --  PERHAPS THE FIRST INTEGER COULD BE AVOIDED AS IT CAN BE CALCULATED FROM
+    --  THE PROBABILITY TUPLES...
+--countStraightFlush :: (Fractional a) => Deck -> [Card] -> HandTypeCount
+--countStraightFlush d cs
+--    | csLeft > 0 = HandTypeCount StraightFlush (length possSuits) (CC 3 neededCs) countTuples
+--    | otherwise  = HandTypeCount StraightFlush 0 CN []
+--        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
+--              hProbs = map handProb possSuits
+--              handProb hcs = 1 / fromIntegral ((cardsIn d) `choose` (5 - length hcs))
+--
+--                -- BELOW PART IS NEW
+--              possHands = filter ((>= 5 - csLeft) . length) candHands
+--              csLeft = 7 - length cs
+--              candHands = concat $ map (\(x,ys)-> map (\\x) ys) suitStraights
+--              suitStraights = map (\x-> (x, [y | y <- map (\v-> Card v . suit $ head x) ovss, x `subsetOf` y])) sgs
+--              sgs = suitDescGroups cs
+--              ovss = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
 
     -- Return the number of possible StraightFlushes which can be formed by
     -- completing the hand of the given cards and which cards are required
