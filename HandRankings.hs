@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.11 - 28-29/04/2015
+--          0.12 - 29-30/04/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -194,14 +194,12 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
     --  THE PROBABILITY TUPLES...
 countRoyalFlush :: (Fractional a) => Deck -> [Card] -> HandTypeCount
 countRoyalFlush d cs
-    | csLeft > 0 = HandTypeCount RoyalFlush (length possSuits) (CC 3 neededCs) countTuples
-    | otherwise  = HandTypeCount RoyalFlush 0 CN []
+    | csLeft cs > 0 = HandTypeCount RoyalFlush (length possHands) (CC 3 $ concat candHands) countTuples
+    | otherwise     = HandTypeCount RoyalFlush 0 CN []
         where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
-              hProbs = map handProb possSuits
-              handProb hcs = 1 / fromIntegral ((cardsIn d) `choose` (5 - length hcs))
-              neededCs = concat $ map (\scs-> [Card v (suit $ head scs) | v <- ovs] \\ scs) possSuits
-              possSuits = filter ((>= 5 - csLeft) . length) sgs
-              csLeft = 7 - length cs
+              hProbs = map (\xs-> handProb d $ CC (length xs) xs) candHands
+              candHands = map (\scs-> [Card v (suit $ head scs) | v <- ovs] \\ scs) possHands
+              possHands = filter ((>= 5 - csLeft cs) . length) sgs
               sgs = suitDescGroups $ filter ((`elem` ovs) . value) cs
               ovs = enumFrom Ten
 
@@ -212,15 +210,11 @@ countRoyalFlush d cs
     --  THE PROBABILITY TUPLES...
 --countStraightFlush :: (Fractional a) => Deck -> [Card] -> HandTypeCount
 --countStraightFlush d cs
---    | csLeft > 0 = HandTypeCount StraightFlush (length possSuits) (CC 3 neededCs) countTuples
---    | otherwise  = HandTypeCount StraightFlush 0 CN []
+--    | csLeft cs > 0 = HandTypeCount StraightFlush (length possHands) (CC 3 candHands) countTuples
+--    | otherwise     = HandTypeCount StraightFlush 0 CN []
 --        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
---              hProbs = map handProb possSuits
---              handProb hcs = 1 / fromIntegral ((cardsIn d) `choose` (5 - length hcs))
---
---                -- BELOW PART IS NEW
---              possHands = filter ((>= 5 - csLeft) . length) candHands
---              csLeft = 7 - length cs
+--              hProbs = map (handProb d) candHands
+--              possHands = filter ((>= 5 - csLeft cs) . length) candHands
 --              candHands = concat $ map (\(x,ys)-> map (\\x) ys) suitStraights
 --              suitStraights = map (\x-> (x, [y | y <- map (\v-> Card v . suit $ head x) ovss, x `subsetOf` y])) sgs
 --              sgs = suitDescGroups cs
@@ -365,3 +359,13 @@ minRankIn :: [(HandType,Int)] -> HandType -> Int
 minRankIn htCounts ht = sum $ map (snd . (htCounts!!)) [0..htNum - 1]
     where htNum = fromEnum ht
 
+
+    -- Return how many cards are left to draw (up to 7 total)
+csLeft :: [Card] -> Int
+csLeft cs = 7 - length cs
+
+
+    -- Return the probability of drawing the given CardSet list from the given Deck
+    -- EVOLVE THIS INTO USING ALL THE VALUES IN Deck AND CONSTRUCTORS OF CardSet
+handProb :: (Fractional a) => Deck -> CardSet -> a
+handProb d cS = 1 / fromIntegral ((cardsIn d) `choose` (lengthCardSet cS))

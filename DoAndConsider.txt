@@ -23,6 +23,9 @@
 ---- 1 - TO DO -----------------------------------------------------------------
 
     REVISE THE MEANING OF THE Int IN CardSet
+    ALSO: ADD A CD CONSTRUCTOR: DIFFERENCE, LIKE "THIS CardSet WITHOUT THIS OTHER ONE"
+    ALSO: CONSIDER INTRODUCING ANOTHER FIELD OF TYPE [CardSet] IN HandTypeCount
+        FOR THE NEEDED CARDS FOR EACH SINGLE POSSIBLE HAND
 
     MAKE THE CardSet VALUE OF HandTypeCount IN countRoyalFlush A CO of CSV
         MAKE CA AND CO TAKE LISTS OF CardSetS INSTEAD OF PAIRS
