@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.13 - 27-28/04/2015
+--          0.14 - 01/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -26,7 +26,7 @@ module DataTypes where
 
 import GeneralFunctions (descLength)
 
-import Data.List (sort, sortBy, groupBy, splitAt, intersect, union)
+import Data.List (sort, sortBy, groupBy, splitAt, intersect, union, (\\))
 import Data.Char (toLower)
 import Data.Function (on)
 import qualified Data.Map as M (lookup, fromList)
@@ -60,7 +60,7 @@ instance Enum Card where
 
 data CardSet = CC Int [Card] | CB Int (Value,Value) | CV Int Value | CS Int Suit
             | CSV Int [Suit] [Value] | CVS Int [Value] [Suit]
-            | CN | CA CardSet CardSet | CO CardSet CardSet
+            | CA CardSet CardSet | CO CardSet CardSet | CD CardSet CardSet | CN
                 deriving (Eq)
 instance Show CardSet where
     show (CC 1 x) = "Any 1 of " ++ show x
@@ -73,13 +73,15 @@ instance Show CardSet where
     show (CSV n ss vs) = "Any " ++ show n ++ " of " ++ show ss ++ " of " ++ show vs
     show (CVS n vs ss) = "Any " ++ show n ++ " of " ++ show vs ++ " of " ++ show ss
 
-    show CN = "No Cards"
-
     show (CB 1 (f,l)) = "Any 1 between " ++ show f ++ " and " ++ show l
     show (CB n (f,l)) = show n ++ " between " ++ show f ++ " and " ++ show l
 
     show (CA c1 c2) = "Both "   ++ show c1 ++ " and " ++ show c2
     show (CO c1 c2) = "Either " ++ show c1 ++ " or "  ++ show c2
+
+    show (CD c1 c2) = show c1 ++ " without " ++ show c2
+
+    show CN = "No Cards"
 
 
 
@@ -163,9 +165,10 @@ fromCardSet (CV n v)      = head . fromValSui [v] $ enumFrom Spades
 fromCardSet (CS n s)      = enumFromTo (Card Two s) (Card Ace s)
 fromCardSet (CSV n ss vs) = concat $ fromSuiVal ss vs
 fromCardSet (CVS n vs ss) = concat $ fromValSui vs ss
-fromCardSet CN            = []
 fromCardSet (CA a b)      = (intersect `on` fromCardSet) a b
 fromCardSet (CO a b)      = (union `on` fromCardSet) a b
+fromCardSet (CD a b)      = ((\\) `on` fromCardSet) a b
+fromCardSet CN            = []
 
 
     -- Return the length of a CardSet more efficiently than counting its cards
@@ -176,9 +179,10 @@ lengthCardSet (CV n v)      = 4
 lengthCardSet (CS n s)      = 13
 lengthCardSet (CSV n ss vs) = length ss * length vs
 lengthCardSet (CVS n vs ss) = length vs * length ss
-lengthCardSet CN            = 0
 lengthCardSet (CA a b)      = abs $ ((-) `on` lengthCardSet) a b
 lengthCardSet (CO a b)      = ((+) `on` lengthCardSet) a b
+lengthCardSet cd@(CD a b)   = length $ fromCardSet cd
+lengthCardSet CN            = 0
 
 
 
