@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.14 - 01/05/2015
+--          0.15 - 01-02/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -54,34 +54,26 @@ instance Enum Card where
         -- This enumFrom is in deck order (suit first), while actual card
         -- comparison is by value first
     enumFrom c = dropWhile (<c) . concat $
-        fromSuiVal (enumFrom $ (minBound :: Suit)) (enumFrom $ (minBound :: Value))
+        fromGSV (enumFrom $ (minBound :: Suit)) (enumFrom $ (minBound :: Value))
 -- All the other Enum functions are automatically derived from toEnum and fromEnum
 
 
-data CardSet = CC Int [Card] | CB Int (Value,Value) | CV Int Value | CS Int Suit
-            | CSV Int [Suit] [Value] | CVS Int [Value] [Suit]
-            | CA CardSet CardSet | CO CardSet CardSet | CD CardSet CardSet | CN
+data CardSet = CN | CC [Card] | CCC [[Card]] | CV Value | CS Suit
+            | CB (Value,Value) | CSV [Suit] [Value] | CVS [Value] [Suit]
+            | CA CardSet CardSet | CO CardSet CardSet | CD CardSet CardSet
                 deriving (Eq)
 instance Show CardSet where
-    show (CC 1 x) = "Any 1 of " ++ show x
-    show (CC n x) = show n ++ " of " ++ show x
-    show (CV 1 x) = "Any 1 " ++ show x
-    show (CV n x) = "Any " ++ show n ++ " " ++ show x ++ "s"
-    show (CS 1 x) = "Any 1 " ++ (init $ show x)
-    show (CS n x) = "Any " ++ show n ++ " " ++ show x
-
-    show (CSV n ss vs) = "Any " ++ show n ++ " of " ++ show ss ++ " of " ++ show vs
-    show (CVS n vs ss) = "Any " ++ show n ++ " of " ++ show vs ++ " of " ++ show ss
-
-    show (CB 1 (f,l)) = "Any 1 between " ++ show f ++ " and " ++ show l
-    show (CB n (f,l)) = show n ++ " between " ++ show f ++ " and " ++ show l
-
+    show CN = "No Cards"
+    show (CCC x) = "Any of " ++ show x
+    show (CC x) = "Any of " ++ show x
+    show (CV x) = "Any " ++ show x ++ "s"
+    show (CS x) = "Any " ++ show x
+    show (CB (f,l)) = "Any between " ++ show f ++ " and " ++ show l
+    show (CSV ss vs) = "Any " ++ " of " ++ show ss ++ " of " ++ show vs
+    show (CVS vs ss) = "Any " ++ " of " ++ show vs ++ " of " ++ show ss
     show (CA c1 c2) = "Both "   ++ show c1 ++ " and " ++ show c2
     show (CO c1 c2) = "Either " ++ show c1 ++ " or "  ++ show c2
-
     show (CD c1 c2) = show c1 ++ " without " ++ show c2
-
-    show CN = "No Cards"
 
 
 
@@ -101,15 +93,19 @@ cardsToInts :: [Card] -> [Int]
 cardsToInts = map fromEnum
 
 
-	-- Generate a list of lists of Cards from lists of Suits and Values in this order
-fromSuiVal :: [Suit] -> [Value] -> [[Card]]
-fromSuiVal ss vs = [[Card v s | v <- vs] | s <- ss]
+	-- Generate a list of Cards from lists of Suits and Values grouped by Suits
+fromGSV :: [Suit] -> [Value] -> [[Card]]
+fromGSV ss vs = [[Card v s | v <- vs] | s <- ss]
+    -- Same as: concat . fromGSV
+fromSV :: [Suit] -> [Value] -> [Card]
+fromSV ss vs = [Card v s | s <- ss,  v <- vs]
 
-
-	-- Generate a list of lists of Cards from lists of Values and Suits in this order
-fromValSui :: [Value] -> [Suit] -> [[Card]]
-fromValSui vs ss = [[Card v s | s <- ss] | v <- vs]
-
+	-- Generate a lists of Cards from lists of Values and Suits grouped by Values
+fromGVS :: [Value] -> [Suit] -> [[Card]]
+fromGVS vs ss = [[Card v s | s <- ss] | v <- vs]
+    -- Same as: concat . fromGVS
+fromVS :: [Value] -> [Suit] -> [Card]
+fromVS vs ss = [Card v s | v <- vs, s <- ss]
 
     -- Sort cards by suit first (as in deck order)
 sortBySuit :: [Card] -> [Card]
@@ -159,30 +155,32 @@ groupCardsBy suitOrValue = groupBy ((==) `on` suitOrValue) . reverse
 
     -- Transform a CardSet into its equivalent list of Cards
 fromCardSet :: CardSet -> [Card]
-fromCardSet (CC n cs)     = cs
-fromCardSet (CB n (f,l))  = concat $ fromValSui (enumFromTo f l) (enumFrom Spades)
-fromCardSet (CV n v)      = head . fromValSui [v] $ enumFrom Spades
-fromCardSet (CS n s)      = enumFromTo (Card Two s) (Card Ace s)
-fromCardSet (CSV n ss vs) = concat $ fromSuiVal ss vs
-fromCardSet (CVS n vs ss) = concat $ fromValSui vs ss
-fromCardSet (CA a b)      = (intersect `on` fromCardSet) a b
-fromCardSet (CO a b)      = (union `on` fromCardSet) a b
-fromCardSet (CD a b)      = ((\\) `on` fromCardSet) a b
-fromCardSet CN            = []
+fromCardSet CN          = []
+fromCardSet (CCC css)   = foldr union [] css
+fromCardSet (CC cs)     = cs
+fromCardSet (CV v)      = head . fromGVS [v] $ enumFrom Spades
+fromCardSet (CS s)      = enumFromTo (Card Two s) (Card Ace s)
+fromCardSet (CB (f,l))  = concat $ fromGVS (enumFromTo f l) (enumFrom Spades)
+fromCardSet (CSV ss vs) = concat $ fromGSV ss vs
+fromCardSet (CVS vs ss) = concat $ fromGVS vs ss
+fromCardSet (CA a b)    = (intersect `on` fromCardSet) a b
+fromCardSet (CO a b)    = (union `on` fromCardSet) a b
+fromCardSet (CD a b)    = ((\\) `on` fromCardSet) a b
 
 
     -- Return the length of a CardSet more efficiently than counting its cards
 lengthCardSet :: CardSet -> Int
-lengthCardSet (CC n cs)     = length cs
-lengthCardSet (CB n (f,l))  = 4 * (fromEnum l - fromEnum f)
-lengthCardSet (CV n v)      = 4
-lengthCardSet (CS n s)      = 13
-lengthCardSet (CSV n ss vs) = length ss * length vs
-lengthCardSet (CVS n vs ss) = length vs * length ss
-lengthCardSet (CA a b)      = abs $ ((-) `on` lengthCardSet) a b
-lengthCardSet (CO a b)      = ((+) `on` lengthCardSet) a b
-lengthCardSet cd@(CD a b)   = length $ fromCardSet cd
-lengthCardSet CN            = 0
+lengthCardSet CN          = 0
+lengthCardSet (CCC css)   = length $ foldr union [] css
+lengthCardSet (CC cs)     = length cs
+lengthCardSet (CV v)      = 4
+lengthCardSet (CS s)      = 13
+lengthCardSet (CB (f,l))  = 4 * (fromEnum l - fromEnum f)
+lengthCardSet (CSV ss vs) = length ss * length vs
+lengthCardSet (CVS vs ss) = length vs * length ss
+lengthCardSet (CA a b)    = abs $ ((-) `on` lengthCardSet) a b
+lengthCardSet (CO a b)    = ((+) `on` lengthCardSet) a b
+lengthCardSet cd@(CD a b) = length $ fromCardSet cd
 
 
 
@@ -204,9 +202,6 @@ instance Show HandTypesField where
 
 data HandTypeCount = HandTypeCount {cType :: HandType, count :: Int, needed :: CardSet, probs :: [(Int,Float)]}
                 deriving (Eq, Show)
-                    -- "needed" is all the cards which, if drawn by themselves
-                    -- (only one of them), will get the already out cards closer
-                    -- to the intended HandType or a better instance of it
 
 
 data Hand = Hand {hType :: HandType, hTField :: HandTypesField, rank :: Int, cards :: [Card]}
