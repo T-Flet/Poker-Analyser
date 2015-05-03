@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.15 - 01-02/05/2015
+--          0.16 - 02-03/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -58,22 +58,22 @@ instance Enum Card where
 -- All the other Enum functions are automatically derived from toEnum and fromEnum
 
 
-data CardSet = CN | CC [Card] | CCC [[Card]] | CV Value | CS Suit
+data CardSet = CN | CC [Card] | CCC [[Card]] | CV [Value] | CS [Suit]
             | CB (Value,Value) | CSV [Suit] [Value] | CVS [Value] [Suit]
             | CA CardSet CardSet | CO CardSet CardSet | CD CardSet CardSet
                 deriving (Eq)
 instance Show CardSet where
-    show CN = "No Cards"
-    show (CCC x) = "Any of " ++ show x
-    show (CC x) = "Any of " ++ show x
-    show (CV x) = "Any " ++ show x ++ "s"
-    show (CS x) = "Any " ++ show x
-    show (CB (f,l)) = "Any between " ++ show f ++ " and " ++ show l
+    show CN          = "No Cards"
+    show (CCC x)     = "Any of " ++ show x
+    show (CC x)      = "Any of " ++ show x
+    show (CV x)      = "Any " ++ show x ++ "s"
+    show (CS x)      = "Any " ++ show x
+    show (CB (f,l))  = "Any between " ++ show f ++ " and " ++ show l
     show (CSV ss vs) = "Any " ++ " of " ++ show ss ++ " of " ++ show vs
     show (CVS vs ss) = "Any " ++ " of " ++ show vs ++ " of " ++ show ss
-    show (CA c1 c2) = "Both "   ++ show c1 ++ " and " ++ show c2
-    show (CO c1 c2) = "Either " ++ show c1 ++ " or "  ++ show c2
-    show (CD c1 c2) = show c1 ++ " without " ++ show c2
+    show (CA c1 c2)  = "Both "   ++ show c1 ++ " and " ++ show c2
+    show (CO c1 c2)  = "Either " ++ show c1 ++ " or "  ++ show c2
+    show (CD c1 c2)  = show c1 ++ " without " ++ show c2
 
 
 
@@ -154,33 +154,74 @@ groupCardsBy suitOrValue = groupBy ((==) `on` suitOrValue) . reverse
 
 
     -- Transform a CardSet into its equivalent list of Cards
-fromCardSet :: CardSet -> [Card]
-fromCardSet CN          = []
-fromCardSet (CCC css)   = foldr union [] css
-fromCardSet (CC cs)     = cs
-fromCardSet (CV v)      = head . fromGVS [v] $ enumFrom Spades
-fromCardSet (CS s)      = enumFromTo (Card Two s) (Card Ace s)
-fromCardSet (CB (f,l))  = concat $ fromGVS (enumFromTo f l) (enumFrom Spades)
-fromCardSet (CSV ss vs) = concat $ fromGSV ss vs
-fromCardSet (CVS vs ss) = concat $ fromGVS vs ss
-fromCardSet (CA a b)    = (intersect `on` fromCardSet) a b
-fromCardSet (CO a b)    = (union `on` fromCardSet) a b
-fromCardSet (CD a b)    = ((\\) `on` fromCardSet) a b
+cardSetCs :: CardSet -> [Card]
+cardSetCs CN          = []
+cardSetCs (CCC css)   = foldr union [] css
+cardSetCs (CC cs)     = cs
+cardSetCs (CV vs)     = head . fromGVS vs $ enumFrom Spades
+cardSetCs (CS ss)     = concat $ map (\s-> enumFromTo (Card Two s) (Card Ace s)) ss
+cardSetCs (CB (f,l))  = concat $ fromGVS (enumFromTo f l) (enumFrom Spades)
+cardSetCs (CSV ss vs) = concat $ fromGSV ss vs
+cardSetCs (CVS vs ss) = concat $ fromGVS vs ss
+cardSetCs (CA a b)    = (intersect `on` cardSetCs) a b
+cardSetCs (CO a b)    = (union     `on` cardSetCs) a b
+cardSetCs (CD a b)    = ((\\)      `on` cardSetCs) a b
 
 
     -- Return the length of a CardSet more efficiently than counting its cards
-lengthCardSet :: CardSet -> Int
-lengthCardSet CN          = 0
-lengthCardSet (CCC css)   = length $ foldr union [] css
-lengthCardSet (CC cs)     = length cs
-lengthCardSet (CV v)      = 4
-lengthCardSet (CS s)      = 13
-lengthCardSet (CB (f,l))  = 4 * (fromEnum l - fromEnum f)
-lengthCardSet (CSV ss vs) = length ss * length vs
-lengthCardSet (CVS vs ss) = length vs * length ss
-lengthCardSet (CA a b)    = abs $ ((-) `on` lengthCardSet) a b
-lengthCardSet (CO a b)    = ((+) `on` lengthCardSet) a b
-lengthCardSet cd@(CD a b) = length $ fromCardSet cd
+cardSetLen :: CardSet -> Int
+cardSetLen CN          = 0
+cardSetLen (CCC css)   = length $ foldr union [] css
+cardSetLen (CC cs)     = length cs
+cardSetLen (CV vs)     = 4 * length vs
+cardSetLen (CS ss)     = 13 * length ss
+cardSetLen (CB (f,l))  = 4 * (fromEnum l - fromEnum f)
+cardSetLen (CSV ss vs) = length ss * length vs
+cardSetLen (CVS vs ss) = length vs * length ss
+cardSetLen (CA a b)    = abs $ ((-) `on` cardSetLen) a b
+cardSetLen (CO a b)    = ((+) `on` cardSetLen) a b
+cardSetLen cd@(CD a b) = length $ cardSetCs cd
+
+
+    -- Given a CA, CO or CD, return the most appropriate other CardSet
+    -- Other constructors return themselves
+--cardSetApp :: CardSet -> CardSet
+--cardSetApp binConstr = let
+--            (binFunc, c1, c2) = case binConstr of
+--                (CA x y) -> (intersect, x, y)
+--                (CO x y) -> (union,     x, y)
+--                (CD x y) -> ((\\),      x, y)
+--        in case (c1, c2) of
+--    (CN,_) -> CN
+--    (_,CN) -> CN
+--    (CCC a, CCC b) -> CCC $ binFunc a b
+--    (CC a, CC b)   -> CC $ binFunc a b
+--    (CV a, CV b) -> CV $ binFunc a b
+--    (CS a, CS b) -> CS $ binFunc a b
+--    (CV a, CS b) -> CVS a b
+--    (CS a, CV b) -> CSV a b
+--    (CV a, CB (f,l)) -> CV $ binFunc a (enumFromTo f l)
+--    (CB (f,l), CV b) -> CV $ binFunc (enumFromTo f l) b
+--    (CB (f,l), CS b) -> CVS (enumFromTo f l) b
+--    (CS a, CB (f,l)) -> CSV a (enumFromTo f l)
+--    (CSV as av, CSV bs bv) -> CSV (binFunc as bs) (binFunc av bv)
+--    (CVS av as, CVS bv bs) -> CVS (binFunc av bv) (binFunc as bs)
+--    (CSV as av, CVS bv bs) -> CSV (binFunc as bs) (binFunc av bv)
+--    (CVS av as, CSV bs bv) -> CVS (binFunc av bv) (binFunc as bs)
+--    (CSV as av, CV bv) -> CSV as (binFunc av bv)
+--    (CV av, CSV bs bv) -> CSV bs (binFunc av bv)
+--    (CSV as av, CS bs) -> CSV (binFunc as bs) av
+--    (CS as, CSV bs bv) -> CSV (binFunc as bs) bv
+--    (CSV as av, CB (f,l)) -> CSV as (binFunc av (enumFromTo f l))
+--    (CB (f,l), CSV bs bv) -> CSV bs (binFunc (enumFromTo f l) bv)
+--    (CVS as av, CV bv) -> CVS (binFunc av bv) as
+--    (CV av, CVS bs bv) -> CVS (binFunc av bv) bs
+--    (CVS as av, CS bs) -> CVS av (binFunc as bs)
+--    (CS as, CVS bs bv) -> CVS bv (binFunc as bs)
+--    (CVS as av, CB (f,l)) -> CVS (binFunc av (enumFromTo f l)) as
+--    (CB (f,l), CVS bs bv) -> CVS (binFunc (enumFromTo f l) bv) bs
+--    (a,b) -> CC $ (binFunc `on` cardSetCs) a b
+--cardSetApp otherCons = otherCons
 
 
 

@@ -170,30 +170,30 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 
 ---- 3 - HANDTYPE INSTANCES CALCULATORS ----------------------------------------
 
-    -- NOTE: These functions do not necessarily cater for a null input
+    -- Input for the following functions:
+    -- the current Deck, the cards which should not be considered (like the
+    -- player's if working just on the table) and the cards in question.
 
 
-    -- Apply all HandTypes' Instances Calculators to each subset of the given cards
---countHandTypes :: [Card] -> [HandTypeCount]
---countHandTypes cs = [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
---    where rF = countRoyalFlush    cs
---          sF = countStraightFlush cs
---          fK = countFourOfAKind   cs
---          fH = countFullHouse     cs
---          fl = countFlush         cs
---          st = countStraight      cs
---          tK = countThreeOfAKind  cs
---          tP = countTwoPair       cs
---          oP = countOnePair       cs
---          hC = countHighCard      cs
+    -- Apply all HandTypes' Instances Calculators to the given cards
+--countHandTypes :: Deck -> [Card] -> [Card] -> [HandTypeCount]
+--countHandTypes d ocs cs = map (\f-> f d ocs cs) countFunctions
+--    where countFunctions = [countRoyalFlush, \
+--                          \ countStraightFlush, \
+--                          \ countFourOfAKind, \
+--                          \ countFullHouse, \
+--                          \ countFlush, \
+--                          \ countStraight, \
+--                          \ countThreeOfAKind, \
+--                          \ countTwoPair, \
+--                          \ countOnePair, \
+--                          \ countHighCard]
 
 
     -- Return the HandTypeCount of possible instances of RoyalFlush which can be
     -- obtained by completing the set of 7 cards
-    --  PERHAPS THE FIRST INTEGER COULD BE AVOIDED AS IT CAN BE CALCULATED FROM
-    --  THE PROBABILITY TUPLES...
-countRoyalFlush :: (Fractional a) => Deck -> [Card] -> HandTypeCount
-countRoyalFlush d cs
+countRoyalFlush :: (Fractional a) => Deck -> [Card] -> [Card] -> HandTypeCount
+countRoyalFlush d ocs cs
     | csLeft cs > 0 = HandTypeCount RoyalFlush (length possHands) (CCC candHands) countTuples
     | otherwise     = HandTypeCount RoyalFlush 0 CN []
         where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
@@ -368,4 +368,4 @@ csLeft cs = 7 - length cs
     -- Return the probability of drawing the given CardSet list from the given Deck
     -- EVOLVE THIS INTO USING ALL THE VALUES IN Deck AND CONSTRUCTORS OF CardSet
 handProb :: (Fractional a) => Deck -> CardSet -> a
-handProb d cS = 1 / fromIntegral ((cardsIn d) `choose` (lengthCardSet cS))
+handProb d cS = 1 / fromIntegral ((cardsIn d) `choose` (cardSetLen cS))
