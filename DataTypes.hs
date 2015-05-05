@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.16 - 02-03/05/2015
+--          0.17 - 04-05/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -185,67 +185,63 @@ cardSetLen cd@(CD a b) = length $ cardSetCs cd
 
     -- Given a CA, CO or CD, return the most appropriate other CardSet
     -- Other constructors return themselves
-
---TESTING PART BEFORE cardSetApp FUNCTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
--- https://stackoverflow.com/questions/29170362/no-instance-for-eq-a-arising-from-a-use-of
---data CSFls = CSFV [Value] | CSFC [Card] deriving (Eq)
---handleCons :: Char -> ([CSFls] -> [CSFls] -> [CSFls]) -> CardSet -> CardSet -> CardSet
-handleCons op binFunc c1 c2 = case (c1, c2) of
-    (CV  a,     CV  b    ) -> CV  $ ((binFunc a b) :: [Value])
---    (CS  a,     CS  b    ) -> CS  $ ((binFunc a b) :: [Suit])
-    _ -> CN
-
 cardSetApp :: CardSet -> CardSet
-cardSetApp (CA x y) = handleCons 'A' intersect x y
-cardSetApp (CO x y) = handleCons 'O' union     x y
-cardSetApp (CD x y) = handleCons 'D' (\\)      x y
+cardSetApp (CA x y) = handleCons 'A' x y
+cardSetApp (CO x y) = handleCons 'O' x y
+cardSetApp (CD x y) = handleCons 'D' x y
 cardSetApp otherCon = otherCon
---
---handleCons :: Eq a => Char -> ([a] -> [a] -> [a]) -> CardSet -> CardSet -> CardSet
---handleCons op binFunc c1 c2 = case (c1, c2) of
---    (CN,        b        ) -> case op of 'A' -> CN ; 'O' -> b ; 'D' -> CN
---    (a,         CN       ) -> case op of 'A' -> CN ; 'O' -> a ; 'D' -> a
---    (CCC a,     CCC b    ) -> CCC $ binFunc a b
---    (CC  a,     CC  b    ) -> CC  $ binFunc a b
---    (CV  a,     CV  b    ) -> CV  $ binFunc a b
---    (CS  a,     CS  b    ) -> CS  $ binFunc a b
---    (CV  a,     CS  b    ) -> case op of
---                                'A' -> CVS a b
---                                _   -> CC $ (binFunc `on` cardSetCs) (CV a) (CS b)
---    (CS  a,     CV  b    ) -> case op of
---                                'A' -> CSV a b
---                                _   -> CC $ (binFunc `on` cardSetCs) (CS a) (CV b)
---    (CB  (f,l), CB  (g,m)) -> case op of
---                                'A' -> CB (max f g, min l m)
---                                'O' -> CB (min f g, max l m)
---                                'D' -> CV $ (\\) (enumFromTo f l) (enumFromTo g m)
---    (CV  a,     CB  (f,l)) -> CV  $ binFunc a (enumFromTo f l)
---    (CB  (f,l), CV  b    ) -> CV  $ binFunc (enumFromTo f l) b
---    (CS  a,     CB  (f,l)) -> CSV a (enumFromTo f l)
---    (CB  (f,l), CS  b    ) -> CVS (enumFromTo f l) b
---    (CSV as av, CSV bs bv) -> CSV (binFunc as bs) (binFunc av bv)
---    (CVS av as, CVS bv bs) -> CVS (binFunc av bv) (binFunc as bs)
---    (CSV as av, CVS bv bs) -> CSV (binFunc as bs) (binFunc av bv)
---    (CVS av as, CSV bs bv) -> CVS (binFunc av bv) (binFunc as bs)
---    (CSV as av, CV  bv   ) -> CSV as (binFunc av bv)
---    (CV  av,    CSV bs bv) -> CSV bs (binFunc av bv)
---    (CSV as av, CS  bs   ) -> CSV (binFunc as bs) av
---    (CS  as,    CSV bs bv) -> CSV (binFunc as bs) bv
---    (CSV as av, CB  (f,l)) -> CSV as (binFunc av (enumFromTo f l))
---    (CB  (f,l), CSV bs bv) -> CSV bs (binFunc (enumFromTo f l) bv)
---    (CVS as av, CV  bv   ) -> CVS (binFunc av bv) as
---    (CV  av,    CVS bs bv) -> CVS (binFunc av bv) bs
---    (CVS as av, CS  bs   ) -> CVS av (binFunc as bs)
---    (CS  as,    CVS bs bv) -> CVS bv (binFunc as bs)
---    (CVS as av, CB (f,l) ) -> CVS (binFunc av (enumFromTo f l)) as
---    (CB  (f,l), CVS bs bv) -> CVS (binFunc (enumFromTo f l) bv) bs
---    (CA a1 a2,  b        ) -> handleCons binFunc (handleCons intersect a1 a2) b
---    (a,         CA b1 b2 ) -> handleCons binFunc a (handleCons intersect b1 b2)
---    (CO a1 a2,  b        ) -> handleCons binFunc (handleCons union a1 a2) b
---    (a,         CO b1 b2 ) -> handleCons binFunc a (handleCons union b1 b2)
---    (CD a1 a2,  b        ) -> handleCons binFunc (handleCons (\\) a1 a2) b
---    (a,         CD b1 b2 ) -> handleCons binFunc a (handleCons (\\) b1 b2)
---    (a,         b        ) -> CC  $ (binFunc `on` cardSetCs) a b
+
+    -- Handle eac pair of CardSets with the appropriate list funcion
+handleCons :: Char -> CardSet -> CardSet -> CardSet
+handleCons op c1 c2 = let
+        listOp :: Eq a => Char -> [a] -> [a] -> [a]
+        listOp 'A' = intersect
+        listOp 'O' = union
+        listOp 'D' = (\\)
+    in case (c1, c2) of
+    (CN,        b        ) -> case op of 'A' -> CN ; 'O' -> b ; 'D' -> CN
+    (a,         CN       ) -> case op of 'A' -> CN ; 'O' -> a ; 'D' -> a
+    (CCC a,     CCC b    ) -> CCC $ listOp op a b
+    (CC  a,     CC  b    ) -> CC  $ listOp op a b
+    (CV  a,     CV  b    ) -> CV  $ listOp op a b
+    (CS  a,     CS  b    ) -> CS  $ listOp op a b
+    (CV  a,     CS  b    ) -> case op of
+                                'A' -> CVS a b
+                                _   -> CC $ (listOp op `on` cardSetCs) (CV a) (CS b)
+    (CS  a,     CV  b    ) -> case op of
+                                'A' -> CSV a b
+                                _   -> CC $ (listOp op `on` cardSetCs) (CS a) (CV b)
+    (CB  (f,l), CB  (g,m)) -> case op of
+                                'A' -> CB (max f g, min l m)
+                                'O' -> CB (min f g, max l m)
+                                'D' -> CV $ (\\) (enumFromTo f l) (enumFromTo g m)
+    (CV  a,     CB  (f,l)) -> CV  $ listOp op a (enumFromTo f l)
+    (CB  (f,l), CV  b    ) -> CV  $ listOp op (enumFromTo f l) b
+    (CS  a,     CB  (f,l)) -> CSV a (enumFromTo f l)
+    (CB  (f,l), CS  b    ) -> CVS (enumFromTo f l) b
+    (CSV as av, CSV bs bv) -> CSV (listOp op as bs) (listOp op av bv)
+    (CVS av as, CVS bv bs) -> CVS (listOp op av bv) (listOp op as bs)
+    (CSV as av, CVS bv bs) -> CSV (listOp op as bs) (listOp op av bv)
+    (CVS av as, CSV bs bv) -> CVS (listOp op av bv) (listOp op as bs)
+    (CSV as av, CV  bv   ) -> CSV as (listOp op av bv)
+    (CV  av,    CSV bs bv) -> CSV bs (listOp op av bv)
+    (CSV as av, CS  bs   ) -> CSV (listOp op as bs) av
+    (CS  as,    CSV bs bv) -> CSV (listOp op as bs) bv
+    (CSV as av, CB  (f,l)) -> CSV as (listOp op av (enumFromTo f l))
+    (CB  (f,l), CSV bs bv) -> CSV bs (listOp op (enumFromTo f l) bv)
+    (CVS av as, CV  bv   ) -> CVS (listOp op av bv) as
+    (CV  av,    CVS bv bs) -> CVS (listOp op av bv) bs
+    (CVS av as, CS  bs   ) -> CVS av (listOp op as bs)
+    (CS  as,    CVS bv bs) -> CVS bv (listOp op as bs)
+    (CVS av as, CB (f,l) ) -> CVS (listOp op av (enumFromTo f l)) as
+    (CB  (f,l), CVS bv bs) -> CVS (listOp op (enumFromTo f l) bv) bs
+    (CA a1 a2,  b        ) -> handleCons op (handleCons 'A' a1 a2) b
+    (a,         CA b1 b2 ) -> handleCons op a (handleCons 'A' b1 b2)
+    (CO a1 a2,  b        ) -> handleCons op (handleCons 'O' a1 a2) b
+    (a,         CO b1 b2 ) -> handleCons op a (handleCons 'O' b1 b2)
+    (CD a1 a2,  b        ) -> handleCons op (handleCons 'D' a1 a2) b
+    (a,         CD b1 b2 ) -> handleCons op a (handleCons 'D' b1 b2)
+    (a,         b        ) -> CC  $ (listOp op `on` cardSetCs) a b
 
 
 
