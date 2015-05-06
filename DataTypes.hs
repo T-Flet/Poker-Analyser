@@ -191,7 +191,7 @@ cardSetApp (CO x y) = handleCons 'O' x y
 cardSetApp (CD x y) = handleCons 'D' x y
 cardSetApp otherCon = otherCon
 
-    -- Handle eac pair of CardSets with the appropriate list funcion
+    -- Handle each pair of CardSets with the appropriate list function
 handleCons :: Char -> CardSet -> CardSet -> CardSet
 handleCons op c1 c2 = let
         listOp :: Eq a => Char -> [a] -> [a] -> [a]

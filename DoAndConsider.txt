@@ -22,6 +22,9 @@
 
 ---- 1 - TO DO -----------------------------------------------------------------
 
+    WHEN HAPPY WITH THE FIRST count FUNCTION, GO TO THE NEXT ONES AND MIMIC ALL
+    THE NOMENCLATURE AND STRUCTURAL CHOICES
+
     CONSIDER INTRODUCING ANOTHER FIELD OF TYPE [CardSet] IN HandTypeCount
         FOR THE NEEDED CARDS FOR EACH SINGLE POSSIBLE HAND
 
@@ -87,6 +90,9 @@
 
 
 ---- 2 - TO CONSIDER -----------------------------------------------------------
+
+    FLIPPING THE FIRST TWO ARGUMENTS OF count FUNCTION (SEPARATE THE TWO [Card]
+    WITH THE Deck, JUST FOR MORE CLARITY)
 
     PERHAPS REDO rank FUNCTIONS TO REALLY MATCH THE HANDS WITH THEIR REAL PLACE
 

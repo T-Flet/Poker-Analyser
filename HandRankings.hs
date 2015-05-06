@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.13 - 01-02/05/2015
+--          0.14 - 05-06/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -194,12 +194,13 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
     -- obtained by completing the set of 7 cards
 countRoyalFlush :: (Fractional a) => Deck -> [Card] -> [Card] -> HandTypeCount
 countRoyalFlush d ocs cs
-    | csLeft cs > 0 = HandTypeCount RoyalFlush (length possHands) (CCC candHands) countTuples
+    | csLeft cs > 0 = HandTypeCount RoyalFlush (length possHands) (CCC possHands) countTuples
     | otherwise     = HandTypeCount RoyalFlush 0 CN []
         where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
-              hProbs = map (\xs-> handProb d $ CC xs) candHands
-              candHands = map (\scs-> fromSV [suit $ head scs] ovs \\ scs) possHands
-              possHands = filter ((>= 5 - csLeft cs) . length) sgs
+              hProbs = map (\xs-> handProb d $ CC xs) possHands
+              possHands = filter (not . any (`elem` ocs)) possHands'
+              possHands' = map (\scs-> fromSV [suit $ head scs] ovs \\ scs) candHands
+              candHands = filter ((>= 5 - csLeft cs) . length) sgs
               sgs = suitDescGroups $ filter ((`elem` ovs) . value) cs
               ovs = enumFrom Ten
 
@@ -210,13 +211,13 @@ countRoyalFlush d ocs cs
     --  THE PROBABILITY TUPLES...
 --countStraightFlush :: (Fractional a) => Deck -> [Card] -> HandTypeCount
 --countStraightFlush d cs
---    | csLeft cs > 0 = HandTypeCount StraightFlush (length possHands) (CCC candHands) countTuples
+--    | csLeft cs > 0 = HandTypeCount StraightFlush (length candHands) (CCC possHands) countTuples
 --    | otherwise     = HandTypeCount StraightFlush 0 CN []
 --        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
---              hProbs = map (handProb d) candHands
---              possHands = filter ((>= 5 - csLeft cs) . length) candHands
---              candHands = concat $ map (\(x,ys)-> map (\\x) ys) suitStraights
---              suitStraights = map (\x-> (x, [y | y <- map (\v-> Card v . suit $ head x) ovss, x `subsetOf` y])) sgs
+--              hProbs = map (handProb d) possHands
+--              candHands = filter ((>= 5 - csLeft cs) . length) possHands
+--              possHands = concat $ map (\(x,ys)-> map (\\x) ys) suitStraights
+--              suitStraights = map (\x-> (x, [y | y <- fromVS ovss [suit $ head x], x `subsetOf` y])) sgs
 --              sgs = suitDescGroups cs
 --              ovss = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
 
@@ -225,11 +226,11 @@ countRoyalFlush d ocs cs
 countStraightFlushOLD :: Deck -> [Card] -> (Int,[[Card]])
 countStraightFlushOLD d cs
 --    | null cs            = (40, concat $ map (fromGSV (enumFrom Spades)) ovs)
-    | okVals && sameSuit = (length possHands, map (\\ cs) possHands)
+    | okVals && sameSuit = (length candHands, map (\\ cs) candHands)
     | otherwise          = (0, [])
-        where okVals   = length possHands > 0
+        where okVals   = length candHands > 0
               sameSuit = length (suitDescGroups cs) == 1
-              possHands = concat . map (fromGSV [suit $ head cs]) $ filter ((map value cs) `subsetOf`) ovs
+              candHands = concat . map (fromGSV [suit $ head cs]) $ filter ((map value cs) `subsetOf`) ovs
               ovs = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
 
 
