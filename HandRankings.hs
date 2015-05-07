@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.14 - 05-06/05/2015
+--          0.15 - 06-07/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -192,46 +192,32 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 
     -- Return the HandTypeCount of possible instances of RoyalFlush which can be
     -- obtained by completing the set of 7 cards
-countRoyalFlush :: (Fractional a) => Deck -> [Card] -> [Card] -> HandTypeCount
+countRoyalFlush :: Deck -> [Card] -> [Card] -> HandTypeCount
 countRoyalFlush d ocs cs
-    | csLeft cs > 0 = HandTypeCount RoyalFlush (length possHands) (CCC possHands) countTuples
-    | otherwise     = HandTypeCount RoyalFlush 0 CN []
+    | csLeft ocs cs > 0 = HandTypeCount RoyalFlush (length possHands) (CCC possHands) countTuples
+    | otherwise         = HandTypeCount RoyalFlush 0 CN []
         where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
-              hProbs = map (\xs-> handProb d $ CC xs) possHands
+              hProbs = map (handProb d . CC) possHands
               possHands = filter (not . any (`elem` ocs)) possHands'
-              possHands' = map (\scs-> fromSV [suit $ head scs] ovs \\ scs) candHands
-              candHands = filter ((>= 5 - csLeft cs) . length) sgs
-              sgs = suitDescGroups $ filter ((`elem` ovs) . value) cs
-              ovs = enumFrom Ten
+              possHands' = map (\scs-> fromSV [suit $ head scs] okvs \\ scs) candHands
+              candHands = filter ((>= 5 - csLeft ocs cs) . length) sgs
+              sgs = suitDescGroups $ filter ((`elem` okvs) . value) cs
+              okvs = enumFrom Ten
 
 
-    -- Return the HandTypeCount of possible instances of RoyalFlush which can be
-    -- obtained by completing the set of 7 cards
-    --  PERHAPS THE FIRST INTEGER COULD BE AVOIDED AS IT CAN BE CALCULATED FROM
-    --  THE PROBABILITY TUPLES...
---countStraightFlush :: (Fractional a) => Deck -> [Card] -> HandTypeCount
---countStraightFlush d cs
---    | csLeft cs > 0 = HandTypeCount StraightFlush (length candHands) (CCC possHands) countTuples
---    | otherwise     = HandTypeCount StraightFlush 0 CN []
---        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
---              hProbs = map (handProb d) possHands
---              candHands = filter ((>= 5 - csLeft cs) . length) possHands
---              possHands = concat $ map (\(x,ys)-> map (\\x) ys) suitStraights
---              suitStraights = map (\x-> (x, [y | y <- fromVS ovss [suit $ head x], x `subsetOf` y])) sgs
---              sgs = suitDescGroups cs
---              ovss = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
-
-    -- Return the number of possible StraightFlushes which can be formed by
-    -- completing the hand of the given cards and which cards are required
-countStraightFlushOLD :: Deck -> [Card] -> (Int,[[Card]])
-countStraightFlushOLD d cs
---    | null cs            = (40, concat $ map (fromGSV (enumFrom Spades)) ovs)
-    | okVals && sameSuit = (length candHands, map (\\ cs) candHands)
-    | otherwise          = (0, [])
-        where okVals   = length candHands > 0
-              sameSuit = length (suitDescGroups cs) == 1
-              candHands = concat . map (fromGSV [suit $ head cs]) $ filter ((map value cs) `subsetOf`) ovs
-              ovs = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
+    -- Return the HandTypeCount of possible instances of StraightFlush which can
+    -- be obtained by completing the set of 7 cards
+countStraightFlush :: Deck -> [Card] -> [Card] -> HandTypeCount
+countStraightFlush d ocs cs
+    | csLeft ocs cs > 0 = HandTypeCount StraightFlush (length possHands) (CCC possHands) countTuples
+    | otherwise         = HandTypeCount StraightFlush 0 CN []
+        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
+              hProbs = map (handProb d . CC) candHands
+              possHands = filter (not . any (`elem` ocs)) possHands'
+              possHands' = filter ((>= 5 - csLeft ocs cs) . length) candHands
+              candHands = [y\\x | x <- sgs, okvs <- okvss, let y = fromVS okvs [suit $ head x], any (`elem` y) x]
+              sgs = suitDescGroups cs
+              okvss = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
 
 
     -- Return the number of possible FourOfAKinds which can be formed by
@@ -362,8 +348,8 @@ minRankIn htCounts ht = sum $ map (snd . (htCounts!!)) [0..htNum - 1]
 
 
     -- Return how many cards are left to draw (up to 7 total)
-csLeft :: [Card] -> Int
-csLeft cs = 7 - length cs
+csLeft :: [Card] -> [Card] -> Int
+csLeft ocs cs = 7 - length ocs - length cs
 
 
     -- Return the probability of drawing the given CardSet list from the given Deck
