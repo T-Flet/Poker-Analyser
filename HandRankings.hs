@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.15 - 06-07/05/2015
+--          0.16 - 07-08/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -198,11 +198,10 @@ countRoyalFlush d ocs cs
     | otherwise         = HandTypeCount RoyalFlush 0 CN []
         where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
               hProbs = map (handProb d . CC) possHands
-              possHands = filter (not . any (`elem` ocs)) possHands'
-              possHands' = map (\scs-> fromSV [suit $ head scs] okvs \\ scs) candHands
-              candHands = filter ((>= 5 - csLeft ocs cs) . length) sgs
-              sgs = suitDescGroups $ filter ((`elem` okvs) . value) cs
-              okvs = enumFrom Ten
+              possHands = filter ((<= csLeft ocs cs) . length) neededHands
+              neededHands = map (\\cs) notOcsHands
+              notOcsHands = filter (not . any (`elem` ocs)) allPossHands
+              allPossHands = fromSVG (enumFrom Spades) (enumFrom Ten)
 
 
     -- Return the HandTypeCount of possible instances of StraightFlush which can
@@ -212,26 +211,40 @@ countStraightFlush d ocs cs
     | csLeft ocs cs > 0 = HandTypeCount StraightFlush (length possHands) (CCC possHands) countTuples
     | otherwise         = HandTypeCount StraightFlush 0 CN []
         where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
-              hProbs = map (handProb d . CC) candHands
-              possHands = filter (not . any (`elem` ocs)) possHands'
-              possHands' = filter ((>= 5 - csLeft ocs cs) . length) candHands
-              candHands = [y\\x | x <- sgs, okvs <- okvss, let y = fromVS okvs [suit $ head x], any (`elem` y) x]
-              sgs = suitDescGroups cs
+              hProbs = map (handProb d . CC) possHands
+              possHands = filter ((<= csLeft ocs cs) . length) neededHands
+              neededHands = map (\\cs) notOcsHands
+              notOcsHands = filter (not . any (`elem` ocs)) allPossHands
+              allPossHands = concat $ map (fromSVG (enumFrom Spades)) okvss
               okvss = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
+
+
+    -- Testing abstract-er function for abowe two, hopefully for further ones as well
+    -- Note: think of other parts which will be specific to each HandType, like
+    -- the CardList parameter (perhaps)
+--countHandType :: HandType -> [Card] -> [Card] -> [[Card]] -> HandTypeCount
+--countHandType ht ocs cs allPossHands
+--    | csLeft ocs cs > 0 = HandTypeCount ht (length possHands) (CCC possHands) countTuples
+--    | otherwise         = HandTypeCount ht 0 CN []
+--        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
+--              hProbs = map (handProb d . CC) possHands
+--              possHands = filter ((<= csLeft ocs cs) . length) neededHands
+--              neededHands = map (\\cs) notOcsHands
+--              notOcsHands = filter (not . any (`elem` ocs)) allPossHands
 
 
     -- Return the number of possible FourOfAKinds which can be formed by
     -- completing the hand of the given cards and which cards are required
 countFourOfAKindOLD :: Deck -> [Card] -> (Int,[[Card]])
 countFourOfAKindOLD d cs
---    | null cs   = (13, fromGVS (enumFrom Two) (enumFrom Spades))
+--    | null cs   = (13, fromVSG (enumFrom Two) (enumFrom Spades))
     | okVals    = if (length h) == 1
                     then (2, [(left h), left l])
                     else (1, [left h])
     | otherwise = (0, [])
         where okVals = (length vgcs < 3) &&
                         (if length vgcs == 2 then (length l) == 1 else True)
-              left vgc = (concat $ fromGVS [value $ head vgc] (enumFrom Spades)) \\ cs
+              left vgc = (concat $ fromVSG [value $ head vgc] (enumFrom Spades)) \\ cs
               (h,l) = (head vgcs, last vgcs)
               vgcs = valueDescGroups cs
 

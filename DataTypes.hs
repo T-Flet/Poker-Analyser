@@ -54,7 +54,7 @@ instance Enum Card where
         -- This enumFrom is in deck order (suit first), while actual card
         -- comparison is by value first
     enumFrom c = dropWhile (<c) . concat $
-        fromGSV (enumFrom $ (minBound :: Suit)) (enumFrom $ (minBound :: Value))
+        fromSVG (enumFrom $ (minBound :: Suit)) (enumFrom $ (minBound :: Value))
 -- All the other Enum functions are automatically derived from toEnum and fromEnum
 
 
@@ -94,16 +94,16 @@ cardsToInts = map fromEnum
 
 
 	-- Generate a list of Cards from lists of Suits and Values grouped by Suits
-fromGSV :: [Suit] -> [Value] -> [[Card]]
-fromGSV ss vs = [[Card v s | v <- vs] | s <- ss]
-    -- Same as: concat . fromGSV
+fromSVG :: [Suit] -> [Value] -> [[Card]]
+fromSVG ss vs = [[Card v s | v <- vs] | s <- ss]
+    -- Same as: concat . fromSVG
 fromSV :: [Suit] -> [Value] -> [Card]
 fromSV ss vs = [Card v s | s <- ss,  v <- vs]
 
 	-- Generate a lists of Cards from lists of Values and Suits grouped by Values
-fromGVS :: [Value] -> [Suit] -> [[Card]]
-fromGVS vs ss = [[Card v s | s <- ss] | v <- vs]
-    -- Same as: concat . fromGVS
+fromVSG :: [Value] -> [Suit] -> [[Card]]
+fromVSG vs ss = [[Card v s | s <- ss] | v <- vs]
+    -- Same as: concat . fromVSG
 fromVS :: [Value] -> [Suit] -> [Card]
 fromVS vs ss = [Card v s | v <- vs, s <- ss]
 
@@ -158,11 +158,11 @@ cardSetCs :: CardSet -> [Card]
 cardSetCs CN          = []
 cardSetCs (CCC css)   = foldr union [] css
 cardSetCs (CC cs)     = cs
-cardSetCs (CV vs)     = head . fromGVS vs $ enumFrom Spades
+cardSetCs (CV vs)     = head . fromVSG vs $ enumFrom Spades
 cardSetCs (CS ss)     = concat $ map (\s-> enumFromTo (Card Two s) (Card Ace s)) ss
-cardSetCs (CB (f,l))  = concat $ fromGVS (enumFromTo f l) (enumFrom Spades)
-cardSetCs (CSV ss vs) = concat $ fromGSV ss vs
-cardSetCs (CVS vs ss) = concat $ fromGVS vs ss
+cardSetCs (CB (f,l))  = concat $ fromVSG (enumFromTo f l) (enumFrom Spades)
+cardSetCs (CSV ss vs) = concat $ fromSVG ss vs
+cardSetCs (CVS vs ss) = concat $ fromVSG vs ss
 cardSetCs (CA a b)    = (intersect `on` cardSetCs) a b
 cardSetCs (CO a b)    = (union     `on` cardSetCs) a b
 cardSetCs (CD a b)    = ((\\)      `on` cardSetCs) a b
