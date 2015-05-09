@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.16 - 07-08/05/2015
+--          0.17 - 08-09/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -193,44 +193,30 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
     -- Return the HandTypeCount of possible instances of RoyalFlush which can be
     -- obtained by completing the set of 7 cards
 countRoyalFlush :: Deck -> [Card] -> [Card] -> HandTypeCount
-countRoyalFlush d ocs cs
-    | csLeft ocs cs > 0 = HandTypeCount RoyalFlush (length possHands) (CCC possHands) countTuples
-    | otherwise         = HandTypeCount RoyalFlush 0 CN []
-        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
-              hProbs = map (handProb d . CC) possHands
-              possHands = filter ((<= csLeft ocs cs) . length) neededHands
-              neededHands = map (\\cs) notOcsHands
-              notOcsHands = filter (not . any (`elem` ocs)) allPossHands
-              allPossHands = fromSVG (enumFrom Spades) (enumFrom Ten)
+countRoyalFlush = countFlushes RoyalFlush allPossHands
+        where allPossHands = fromSVG (enumFrom Spades) (enumFrom Ten)
 
 
     -- Return the HandTypeCount of possible instances of StraightFlush which can
     -- be obtained by completing the set of 7 cards
 countStraightFlush :: Deck -> [Card] -> [Card] -> HandTypeCount
-countStraightFlush d ocs cs
-    | csLeft ocs cs > 0 = HandTypeCount StraightFlush (length possHands) (CCC possHands) countTuples
-    | otherwise         = HandTypeCount StraightFlush 0 CN []
+countStraightFlush = countFlushes StraightFlush allPossHands
+        where allPossHands = concat $ map (fromSVG (enumFrom Spades)) okvss
+              okvss = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
+
+
+    -- TESTING ABSTRACT-ER FUNCTION FOR ABOWE TWO, HOPEFULLY FOR FURTHER ONES AS WELL
+    -- NOTE: THINK OF OTHER PARTS WHICH WILL BE SPECIFIC TO EACH HANDTYPE, LIKE
+    -- THE CARDLIST PARAMETER (PERHAPS)
+countFlushes :: HandType -> [[Card]] -> Deck -> [Card] -> [Card] -> HandTypeCount
+countFlushes ht allPossHands d ocs cs
+    | csLeft ocs cs > 0 = HandTypeCount ht (length possHands) (CCC possHands) countTuples
+    | otherwise         = HandTypeCount ht 0 CN []
         where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
               hProbs = map (handProb d . CC) possHands
               possHands = filter ((<= csLeft ocs cs) . length) neededHands
               neededHands = map (\\cs) notOcsHands
               notOcsHands = filter (not . any (`elem` ocs)) allPossHands
-              allPossHands = concat $ map (fromSVG (enumFrom Spades)) okvss
-              okvss = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
-
-
-    -- Testing abstract-er function for abowe two, hopefully for further ones as well
-    -- Note: think of other parts which will be specific to each HandType, like
-    -- the CardList parameter (perhaps)
---countHandType :: HandType -> [Card] -> [Card] -> [[Card]] -> HandTypeCount
---countHandType ht ocs cs allPossHands
---    | csLeft ocs cs > 0 = HandTypeCount ht (length possHands) (CCC possHands) countTuples
---    | otherwise         = HandTypeCount ht 0 CN []
---        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
---              hProbs = map (handProb d . CC) possHands
---              possHands = filter ((<= csLeft ocs cs) . length) neededHands
---              neededHands = map (\\cs) notOcsHands
---              notOcsHands = filter (not . any (`elem` ocs)) allPossHands
 
 
     -- Return the number of possible FourOfAKinds which can be formed by
