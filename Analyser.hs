@@ -32,6 +32,7 @@
 import DataTypes
 import HandTypeCheckers
 import HandRankings
+import HandCounters
 --import Probabilities
 
 import Data.List (sort, sortBy, groupBy, maximumBy, group, partition, find)
