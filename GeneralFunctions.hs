@@ -60,9 +60,10 @@ combinations k xs = combinations' (length xs) k xs
 
 ---- 2 - SORTING AND GROUPING FUNCTIONS ----------------------------------------
 
-    -- Descending list ordering function. Perfect for: sortBy descLength $ [[a]]
-descLength :: [a] -> [a] -> Ordering
+    -- Descending and ascending list ordering function. Perfect for: sortBy XXX $ [[a]]
+descLength, ascLength :: [a] -> [a] -> Ordering
 descLength l1 l2 = (compare `on` length) l2 l1
+ascLength  l1 l2 = (compare `on` length) l1 l2
 
     -- Stricter version of groupBy in the sense that does not assume that the
     -- provided comparison function is an equivalence relation.

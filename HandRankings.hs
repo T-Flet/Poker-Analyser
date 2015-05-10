@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.17 - 08-09/05/2015
+--          0.18 - 09-10/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -15,9 +15,8 @@
 --       0 - Imports
 --       1 - Complete Rankers
 --       2 - Single HandType Rankers
---       3 - HandType Instances Calculators
---       4 - HandType Instances Counters
---       5 - General Functions
+--       3 - HandType Absolute Instances Counters
+--       4 - General Functions
 --
 
 
@@ -28,10 +27,9 @@ module HandRankings where
 
 import DataTypes
 import HandTypeCheckers
-import GeneralFunctions (choose, combinations, subsetOf, descLength)
+import GeneralFunctions (choose, combinations)
 
 import Data.Function (on)
-import Data.List (group, groupBy, (\\), sortBy, sort, tails)
 
 
 
@@ -168,93 +166,7 @@ rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
 
 
 
----- 3 - HANDTYPE INSTANCES CALCULATORS ----------------------------------------
-
-    -- Input for the following functions:
-    -- the current Deck, the cards which should not be considered (like the
-    -- player's if working just on the table) and the cards in question.
-
-
-    -- Apply all HandTypes' Instances Calculators to the given cards
---countHandTypes :: Deck -> [Card] -> [Card] -> [HandTypeCount]
---countHandTypes d ocs cs = map (\f-> f d ocs cs) countFunctions
---    where countFunctions = [countRoyalFlush, \
---                          \ countStraightFlush, \
---                          \ countFourOfAKind, \
---                          \ countFullHouse, \
---                          \ countFlush, \
---                          \ countStraight, \
---                          \ countThreeOfAKind, \
---                          \ countTwoPair, \
---                          \ countOnePair, \
---                          \ countHighCard]
-
-
-    -- Return the HandTypeCount of possible instances of RoyalFlush which can be
-    -- obtained by completing the set of 7 cards
-countRoyalFlush :: Deck -> [Card] -> [Card] -> HandTypeCount
-countRoyalFlush = countFlushes RoyalFlush allPossHands
-        where allPossHands = fromSVG (enumFrom Spades) (enumFrom Ten)
-
-
-    -- Return the HandTypeCount of possible instances of StraightFlush which can
-    -- be obtained by completing the set of 7 cards
-countStraightFlush :: Deck -> [Card] -> [Card] -> HandTypeCount
-countStraightFlush = countFlushes StraightFlush allPossHands
-        where allPossHands = concat $ map (fromSVG (enumFrom Spades)) okvss
-              okvss = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
-
-
-    -- TESTING ABSTRACT-ER FUNCTION FOR ABOWE TWO, HOPEFULLY FOR FURTHER ONES AS WELL
-    -- NOTE: THINK OF OTHER PARTS WHICH WILL BE SPECIFIC TO EACH HANDTYPE, LIKE
-    -- THE CARDLIST PARAMETER (PERHAPS)
-countFlushes :: HandType -> [[Card]] -> Deck -> [Card] -> [Card] -> HandTypeCount
-countFlushes ht allPossHands d ocs cs
-    | csLeft ocs cs > 0 = HandTypeCount ht (length possHands) (CCC possHands) countTuples
-    | otherwise         = HandTypeCount ht 0 CN []
-        where countTuples = map (\l-> (length l, head l)) . group $ sort hProbs
-              hProbs = map (handProb d . CC) possHands
-              possHands = filter ((<= csLeft ocs cs) . length) neededHands
-              neededHands = map (\\cs) notOcsHands
-              notOcsHands = filter (not . any (`elem` ocs)) allPossHands
-
-
-    -- Return the number of possible FourOfAKinds which can be formed by
-    -- completing the hand of the given cards and which cards are required
-countFourOfAKindOLD :: Deck -> [Card] -> (Int,[[Card]])
-countFourOfAKindOLD d cs
---    | null cs   = (13, fromVSG (enumFrom Two) (enumFrom Spades))
-    | okVals    = if (length h) == 1
-                    then (2, [(left h), left l])
-                    else (1, [left h])
-    | otherwise = (0, [])
-        where okVals = (length vgcs < 3) &&
-                        (if length vgcs == 2 then (length l) == 1 else True)
-              left vgc = (concat $ fromVSG [value $ head vgc] (enumFrom Spades)) \\ cs
-              (h,l) = (head vgcs, last vgcs)
-              vgcs = valueDescGroups cs
-
-
-    -- Return the number of possible FullHouses which can be formed by
-    -- completing the hand of the given cards and which cards are required
---countFullHouse :: Deck -> [Card] -> (Int,[[Card]])
---countFullHouse d cs
-----    | null cs   = (13*12, concat . map (\x y-> [[x,x,x,y,y],[y,y,y,x,x])) . ...
---    | okVals    = case length vgcs of
---                    1 -> (12, )
---                    2 -> if length h == 3
---                            then (1, )
---                            else (2, )
---    | otherwise = (0, [])
---        where okVals = (length vgcs < 3) &&
---                        (length h < 4) &&
---                        (if length vgcs == 2 then length l < 3 else True)
---              (h,l) = (head vgcs, last vgcs)
---              vgcs = valueDescGroups cs
-
-
-
----- 4 - HANDTYPE INSTANCES COUNTERS -------------------------------------------
+---- 3 - HANDTYPE ABSOLUTE INSTANCES COUNTERS ----------------------------------
 
     -- NOTE: This section is the "long" and "wrong" way to get to these values,
     -- but it was easy to set up as a working version.
@@ -316,7 +228,7 @@ handCombinations = intsLToCardsL . combinations 5 . cardsToInts
 
 
 
----- 5 - GENERAL FUNCTIONS -----------------------------------------------------
+---- 4 - GENERAL FUNCTIONS -----------------------------------------------------
 
     -- Given an N-Plet kind of hand, return its rank among the existing ones
 rankNPlet :: HandType -> [Card] -> Value -> Int
@@ -344,14 +256,3 @@ minRank = minRankIn totHtsCounts
 minRankIn :: [(HandType,Int)] -> HandType -> Int
 minRankIn htCounts ht = sum $ map (snd . (htCounts!!)) [0..htNum - 1]
     where htNum = fromEnum ht
-
-
-    -- Return how many cards are left to draw (up to 7 total)
-csLeft :: [Card] -> [Card] -> Int
-csLeft ocs cs = 7 - length ocs - length cs
-
-
-    -- Return the probability of drawing the given CardSet list from the given Deck
-    -- EVOLVE THIS INTO USING ALL THE VALUES IN Deck AND CONSTRUCTORS OF CardSet
-handProb :: (Fractional a) => Deck -> CardSet -> a
-handProb d cS = 1 / fromIntegral ((cardsIn d) `choose` (cardSetLen cS))
