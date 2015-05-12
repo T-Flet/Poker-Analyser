@@ -60,9 +60,9 @@ cardSetCs :: CardSet -> [Card]
 cardSetCs CN          = []
 cardSetCs (CCC css)   = foldr union [] css
 cardSetCs (CC cs)     = cs
-cardSetCs (CV vs)     = head . fromVSG vs $ enumFrom Spades
+cardSetCs (CV vs)     = head . fromVSG vs $ allSuits
 cardSetCs (CS ss)     = concat $ map (\s-> enumFromTo (Card Two s) (Card Ace s)) ss
-cardSetCs (CB (f,l))  = concat $ fromVSG (enumFromTo f l) (enumFrom Spades)
+cardSetCs (CB (f,l))  = concat $ fromVSG (enumFromTo f l) (allSuits)
 cardSetCs (CSV ss vs) = concat $ fromSVG ss vs
 cardSetCs (CVS vs ss) = concat $ fromVSG vs ss
 cardSetCs (CA a b)    = (intersect `on` cardSetCs) a b

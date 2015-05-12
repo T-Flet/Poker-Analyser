@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.2 - 09-10/05/2015
+--          0.3 - 12/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -24,15 +24,20 @@
 module HandCounters where
 
 import DataTypes
-import GeneralFunctions (choose, ascLength)
+import GeneralFunctions (choose, combinations, ascLength)
 
 import Data.List (tails, group, sort, sortBy, (\\))
+import Data.Sequence (replicateM)
+import Data.Foldable (toList)
 
 
 
 ---- 1 - HANDTYPE INSTANCES CALCULATORS ----------------------------------------
 
-    -- Input for the following functions:
+    -- Each of the following functions returns the HandTypeCount of possible
+    -- instances of a specific HandType which can be obtained by completing a
+    -- set of 7 cards. Their input is:
+    -- Deck -> [Card] -> [Card] -> HandTypeCount
     -- the current Deck, the cards which should not be considered (like the
     -- player's if working just on the table) and the cards in question.
 
@@ -52,52 +57,51 @@ import Data.List (tails, group, sort, sortBy, (\\))
 --                          \ countHighCard]
 
 
-    -- Return the HandTypeCount of possible instances of RoyalFlush which can be
-    -- obtained by completing the set of 7 cards
-countRoyalFlush :: Deck -> [Card] -> [Card] -> HandTypeCount
-countRoyalFlush = countPossHands RoyalFlush aph
-    where aph = fromSVG (enumFrom Spades) (enumFrom Ten)
+countRoyalFlush = countPossHands RoyalFlush aphs
+    where aphs = fromSVG allSuits (enumFrom Ten)
 
 
-    -- Return the HandTypeCount of possible instances of StraightFlush which can
-    -- be obtained by completing the set of 7 cards
-countStraightFlush :: Deck -> [Card] -> [Card] -> HandTypeCount
-countStraightFlush = countPossHands StraightFlush aph
-    where aph = concat $ map (fromSVG (enumFrom Spades)) okvss
-          okvss = take 10 . map (take 5) . tails $ Ace:(enumFrom Two)
+countStraightFlush = countPossHands StraightFlush aphs
+    where aphs = concat $ map (fromSVG allSuits) apvs
+          apvs = take 10 . map (take 5) . tails $ Ace:allValues
 
 
-    -- Return the HandTypeCount of possible instances of FourOfAKind which can
-    -- be obtained by completing the set of 7 cards
-countFourOfAKind :: Deck -> [Card] -> [Card] -> HandTypeCount
-countFourOfAKind = countPossHands FourOfAKind aph
-    where aph = concat . map (\val-> fromVSG [val] (enumFrom Spades)) $ enumFrom Two
+countFourOfAKind = countPossHands FourOfAKind aphs
+    where aphs = concat $ map (\val-> fromVSG [val] allSuits) allValues
 
 
-    -- Return the HandTypeCount of possible instances of FullHouse which can
-    -- be obtained by completing the set of 7 cards
---countFullHouse :: Deck -> [Card] -> [Card] -> HandTypeCount
---countFullHouse = countPossHands FourOfAKind aph
---    where aph = [ | v3 <- enumFrom 2, v2 <- enumFrom 2, v3 /= v2]
+countFullHouse = countPossHands FullHouse aphs
+    where aphs = [makeCs [v3,v3,v3] ss3 ++ makeCs [v2,v2] ss2 | (ss3,ss2) <- apsss, (v3,v2) <- apvs]
+          apvs = [(v3,v2) | v3 <- allValues, v2 <- allValues, v3 /= v2]
+          apsss = [(ss3,ss2) | ss3 <- combinations 3 allSuits, ss2 <- combinations 2 allSuits]
 
 
+countFlush = countPossHands Flush aphs
+    where aphs = [fromSV [s] vs | vs <- combinations 5 allValues, s <- allSuits]
 
-    -- Return the number of possible FullHouses which can be formed by
-    -- completing the hand of the given cards and which cards are required
---countFullHouse :: Deck -> [Card] -> (Int,[[Card]])
---countFullHouse d cs
-----    | null cs   = (13*12, concat . map (\x y-> [[x,x,x,y,y],[y,y,y,x,x])) . ...
---    | okVals    = case length vgcs of
---                    1 -> (12, )
---                    2 -> if length h == 3
---                            then (1, )
---                            else (2, )
---    | otherwise = (0, [])
---        where okVals = (length vgcs < 3) &&
---                        (length h < 4) &&
---                        (if length vgcs == 2 then length l < 3 else True)
---              (h,l) = (head vgcs, last vgcs)
---              vgcs = valueDescGroups cs
+
+countStraight = countPossHands Straight aphs
+    where aphs = [makeCs vs ss | vs <- apvs, ss <- map toList $ replicateM 5 allSuits]
+          apvs = take 10 . map (take 5) . tails $ Ace:allValues
+
+
+countThreeOfAKind = countPossHands ThreeOfAKind aphs
+    where aphs = [makeCs [v,v,v] ss | v <- allValues, ss <- apss]
+          apss = combinations 3 allSuits
+
+
+countTwoPair = countPossHands TwoPair aphs
+    where aphs = [fromVS [v1] ss1 ++ fromVS [v2] ss2 | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss]
+          apvs = combinations 2 allValues
+          apss = combinations 2 allSuits
+
+
+countOnePair = countPossHands OnePair aphs
+    where aphs = [fromVS [v] ss | v <- allValues, ss <- combinations 2 allSuits]
+
+
+countHighCard = countPossHands HighCard aphs
+    where aphs = group allCards
 
 
 
@@ -106,12 +110,12 @@ countFourOfAKind = countPossHands FourOfAKind aph
     -- Possible Hands narrowing down process common to all count functions
 countPossHands :: HandType -> [[Card]] -> Deck -> [Card] -> [Card] -> HandTypeCount
 countPossHands ht allPossHands d outCs cs
-    | csLeft > 0 = HandTypeCount ht (length possHands) possHands countTuples
-    | otherwise  = HandTypeCount ht 0 [] []
+    | csLeft > 0 = HandTypeCount ht possHands countTuples
+    | otherwise  = HandTypeCount ht [] []
         where countTuples = map (\l-> (length l, head l)) $ group hProbs
               hProbs = map (handProb d) possHands
               possHands = sortBy ascLength $ filter ((<= csLeft) . length) neededHands
-              neededHands = map (\\cs) notOcsHands
+              neededHands = filter (not . null) $ map (\\cs) notOcsHands
               notOcsHands = filter (not . any (`elem` outCs)) allPossHands
               csLeft = 7 - length outCs - length cs
 

@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.18 - 10-11/05/2015
+--          0.19 - 12/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -60,8 +60,10 @@ instance Enum Card where
 
 --- Functions ---
 
-    -- List of all Cards
+    -- Lists of all Cards, Values and Suits
 allCards = enumFrom $ Card Two Spades
+allValues = enumFrom Two
+allSuits = enumFrom Spades
 
 
     -- Transform a list of lists of integers in [0..51] into the same for Cards
@@ -87,6 +89,12 @@ fromVSG vs ss = [[Card v s | s <- ss] | v <- vs]
     -- Same as: concat . fromVSG
 fromVS :: [Value] -> [Suit] -> [Card]
 fromVS vs ss = [Card v s | v <- vs, s <- ss]
+
+
+    -- Generate a list of Cards by zipping Values and Suits
+makeCs :: [Value] -> [Suit] -> [Card]
+makeCs vs ss = map (\(v,s)-> Card v s) $ zip vs ss
+
 
     -- Sort cards by suit first (as in deck order)
 sortBySuit :: [Card] -> [Card]
@@ -151,7 +159,7 @@ instance Show HandTypesField where
    show (HT x) = show x
 
 
-data HandTypeCount = HandTypeCount {cType :: HandType, count :: Int, needed :: [[Card]], probs :: [(Int,Float)]}
+data HandTypeCount = HandTypeCount {cType :: HandType, completers :: [[Card]], probs :: [(Int,Float)]}
                 deriving (Eq, Show)
 
 
@@ -177,7 +185,14 @@ toT (HT x) = x
     -- get the player closer the HandType in question
     -- Note: they are ordered by first occurrence by probability of their Hand
 anyNeeded :: HandTypeCount -> [Card]
-anyNeeded htc = nub . concat $ needed htc
+anyNeeded = nub . concat . completers
+
+
+    -- Return the number of possible HandType Hands in the HandTypeCount
+    -- Note: this is more efficient than taking the length of completers
+count :: HandTypeCount -> Int
+count = sum . map fst . probs
+
 
     -- List of "empty" probabilities in descending HandType
 noProbs :: [Prob]
