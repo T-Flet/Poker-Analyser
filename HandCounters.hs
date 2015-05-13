@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.3 - 12/05/2015
+--          0.4 - 12-13/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -26,7 +26,7 @@ module HandCounters where
 import DataTypes
 import GeneralFunctions (choose, combinations, ascLength)
 
-import Data.List (tails, group, sort, sortBy, (\\))
+import Data.List (tails, group, sort, sortBy, delete, (\\))
 import Data.Sequence (replicateM)
 import Data.Foldable (toList)
 
@@ -37,57 +37,89 @@ import Data.Foldable (toList)
     -- Each of the following functions returns the HandTypeCount of possible
     -- instances of a specific HandType which can be obtained by completing a
     -- set of 7 cards. Their input is:
+
     -- Deck -> [Card] -> [Card] -> HandTypeCount
     -- the current Deck, the cards which should not be considered (like the
     -- player's if working just on the table) and the cards in question.
 
+    -- Note: each function avoids counting instances of their HandType which
+    -- qualify as a higher one as well.
+
 
     -- Apply all HandTypes' Instances Calculators to the given cards
---countHandTypes :: Deck -> [Card] -> [Card] -> [HandTypeCount]
---countHandTypes d ocs cs = map (\f-> f d ocs cs) countFunctions
---    where countFunctions = [countRoyalFlush, \
---                          \ countStraightFlush, \
---                          \ countFourOfAKind, \
---                          \ countFullHouse, \
---                          \ countFlush, \
---                          \ countStraight, \
---                          \ countThreeOfAKind, \
---                          \ countTwoPair, \
---                          \ countOnePair, \
---                          \ countHighCard]
+countHandTypes :: Deck -> [Card] -> [Card] -> [HandTypeCount]
+countHandTypes d ocs cs = map (\f-> f d ocs cs) countFunctions
+    where countFunctions = [countRoyalFlush,
+                            countStraightFlush,
+                            countFourOfAKind,
+                            countFullHouse,
+                            countFlush,
+                            countStraight,
+                            countThreeOfAKind,
+                            countTwoPair,
+                            countOnePair,
+                            countHighCard]
 
 
 countRoyalFlush = countPossHands RoyalFlush aphs
     where aphs = fromSVG allSuits (enumFrom Ten)
 
 
-countStraightFlush = countPossHands StraightFlush aphs
-    where aphs = concat $ map (fromSVG allSuits) apvs
-          apvs = take 10 . map (take 5) . tails $ Ace:allValues
+countStraightFlush d ocs cs = countPossHands StraightFlush aphs d ocs cs
+    where aphs = filter ((`notElem` cs) . succ . last) phs
+            -- Remove the Straights which, if present, are overshadowed by another
+            -- greater by one (the Card just above them is in cs)
+            -- Note: no risk of error on succ because only 9 taken below
+          phs = concat $ map (fromSVG allSuits) apvs
+            -- Taking 9 and not 10 prevents RoyalFlushes
+          apvs = take 9 . map (take 5) . tails $ Ace:allValues
 
 
 countFourOfAKind = countPossHands FourOfAKind aphs
     where aphs = concat $ map (\val-> fromVSG [val] allSuits) allValues
 
 
-countFullHouse = countPossHands FullHouse aphs
-    where aphs = [makeCs [v3,v3,v3] ss3 ++ makeCs [v2,v2] ss2 | (ss3,ss2) <- apsss, (v3,v2) <- apvs]
+countFullHouse d ocs cs = countPossHands FullHouse aphs d ocs cs
+    where aphs = [makeCs [v3,v3,v3] ss3 ++ makeCs [v2,v2] ss2 | (ss3,ss2) <- apsss, (v3,v2) <- apvs, nF v3 ss3 v2 ss2]
+            -- Ensuring v3 /= v2 prevents FourOfAKinds
           apvs = [(v3,v2) | v3 <- allValues, v2 <- allValues, v3 /= v2]
           apsss = [(ss3,ss2) | ss3 <- combinations 3 allSuits, ss2 <- combinations 2 allSuits]
+          nF v3 ss3 v2 ss2 = noFourOfAKinds3 v3 ss3 && noFourOfAKinds2 v2 ss2
+          noFourOfAKinds3 v ss = Card v (head (allSuits \\ ss)) `notElem` cs
+            -- This one has a not-all-elem instead of an intuitive any-notElem
+            -- because if there are 2 ThreeOfAKinds it is still a FullHouse
+          noFourOfAKinds2 v ss = not . all (`elem` cs) $ makeCs (repeat v) (allSuits \\ ss)
 
 
 countFlush = countPossHands Flush aphs
-    where aphs = [fromSV [s] vs | vs <- combinations 5 allValues, s <- allSuits]
+    where aphs = [fromSV [s] vs | vs <- apvs, s <- allSuits]
+            -- Remove all FullHouses and FourOfAKinds
+          apvs = filter ((>2) . length . group . sort) pvs
+          pvs = combinations 5 allValues \\ npvs
+            -- Remove all Straights (has to be in this order to do so efficiently)
+          npvs = (enumFromTo Two Five ++ [Ace]) : npvs'
+          npvs' = take 9 . map (take 5) . tails $ allValues
 
 
 countStraight = countPossHands Straight aphs
-    where aphs = [makeCs vs ss | vs <- apvs, ss <- map toList $ replicateM 5 allSuits]
+    where aphs = [makeCs vs ss | vs <- apvs, ss <- apss]
           apvs = take 10 . map (take 5) . tails $ Ace:allValues
+          apss = pss \\ npss
+            -- Remove all StraightFlushes (and Flushes)
+          npss = map (replicate 5) $ enumFrom Spades
+          pss = map toList $ replicateM 5 allSuits
 
 
-countThreeOfAKind = countPossHands ThreeOfAKind aphs
-    where aphs = [makeCs [v,v,v] ss | v <- allValues, ss <- apss]
-          apss = combinations 3 allSuits
+
+-- !!!!!!!!!!!!
+-- CHECKED ABOVE HERE TO REMOVE COUNTING OF BETTER HandTypes INSTANCES
+-- BELOW STILL TO BE CLEARED OF THEM
+-- !!!!!!!!!!!!
+
+
+countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs
+    where aphs = [makeCs [v,v,v] (delete s allSuits) | v <- allValues, s <- allSuits, noFourOfAKinds v s]
+          noFourOfAKinds v s = Card v s `notElem` cs
 
 
 countTwoPair = countPossHands TwoPair aphs

@@ -217,6 +217,8 @@ inOrder cs = sortBy descLength $ concat inOrder'
           pgvgs' :: [[[Card]]]
           pgvgs' = groupBy' (isPred `on` (value . head)) vgs
           vgs = valueGroups cs
+
+            -- Check whether v2 is the predecessor of v1 (YES, this way round)
           isPred v1 v2 = case v1 of
                 Two -> False
                 _   -> v2 == pred v1
