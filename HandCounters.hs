@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.4 - 12-13/05/2015
+--          0.5 - 13-14/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -15,6 +15,7 @@
 --       0 - Imports
 --       1 - HandType Instances Counters
 --       2 - General Functions
+--       3 - Testing Functions
 --
 
 
@@ -29,6 +30,10 @@ import GeneralFunctions (choose, combinations, ascLength)
 import Data.List (tails, group, sort, sortBy, delete, (\\))
 import Data.Sequence (replicateM)
 import Data.Foldable (toList)
+
+
+    -- For testing purposes (see Testing Functions)
+import HandTypeCheckers
 
 
 
@@ -110,22 +115,26 @@ countStraight = countPossHands Straight aphs
           pss = map toList $ replicateM 5 allSuits
 
 
+countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs
+    where aphs = [makeCs [v,v,v] (delete s allSuits) | v <- apvs, s <- allSuits, noFourOfAKinds v s]
+          noFourOfAKinds v s = Card v s `notElem` cs
+          apvs = if null nPletsVs then allValues else nPletsVs
+          nPletsVs = map (value . head) . filter ((>1) . length) $ valueGroups cs
+
+
+countTwoPair d ocs cs = countPossHands TwoPair aphs d ocs cs
+    where aphs = [fromVS [v1] ss1 ++ fromVS [v2] ss2 | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, noNPlets v1 v2 ss1 ss2]
+            -- Ensure that no ThreeOfAKinds can happen
+          noNPlets v1 v2 ss1 ss2 = all (`notElem` cs) $ makeCs [v1,v1,v2,v2] (concat $ map (allSuits\\) [ss1,ss2])
+          apvs = combinations 2 allValues
+          apss = combinations 2 allSuits
+
 
 -- !!!!!!!!!!!!
 -- CHECKED ABOVE HERE TO REMOVE COUNTING OF BETTER HandTypes INSTANCES
 -- BELOW STILL TO BE CLEARED OF THEM
 -- !!!!!!!!!!!!
 
-
-countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs
-    where aphs = [makeCs [v,v,v] (delete s allSuits) | v <- allValues, s <- allSuits, noFourOfAKinds v s]
-          noFourOfAKinds v s = Card v s `notElem` cs
-
-
-countTwoPair = countPossHands TwoPair aphs
-    where aphs = [fromVS [v1] ss1 ++ fromVS [v2] ss2 | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss]
-          apvs = combinations 2 allValues
-          apss = combinations 2 allSuits
 
 
 countOnePair = countPossHands OnePair aphs
@@ -156,3 +165,29 @@ countPossHands ht allPossHands d outCs cs
     -- EVOLVE THIS INTO USING ALL THE VALUES IN Deck AND CONSTRUCTORS OF CardSet
 handProb :: (Fractional a) => Deck -> [Card] -> a
 handProb d css = 1 / fromIntegral ((cardsIn d) `choose` (length css))
+
+
+
+
+
+
+---- 3 - TESTING FUNCTIONS -----------------------------------------------------
+
+    -- Test whether any of the count functions yields a HandType which is not
+    -- its own. In particular, lookout for ones higher than it
+    -- Also, count the instances of each
+checkBetter = res
+    where res = map check . reverse $ enumFrom HighCard
+          check ht = (ht, all (== ht) $ check' ht, length $ check' ht)
+          check' ht = map hType . map bestHandType . completers $ (htc ht) initialDeck [] []
+          htc ht = case ht of
+            RoyalFlush      -> countRoyalFlush
+            StraightFlush   -> countStraightFlush
+            FourOfAKind     -> countFourOfAKind
+            FullHouse       -> countFullHouse
+            Flush           -> countFlush
+            Straight        -> countStraight
+            ThreeOfAKind    -> countThreeOfAKind
+            TwoPair         -> countTwoPair
+            OnePair         -> countOnePair
+            HighCard        -> countHighCard
