@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.5 - 13-14/05/2015
+--          0.6 - 14-15/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -25,9 +25,9 @@
 module HandCounters where
 
 import DataTypes
-import GeneralFunctions (choose, combinations, ascLength)
+import GeneralFunctions (choose, combinations, ascLength, subsetOf)
 
-import Data.List (tails, group, sort, sortBy, delete, (\\))
+import Data.List (tails, group, sort, sortBy, delete, union, (\\))
 import Data.Sequence (replicateM)
 import Data.Foldable (toList)
 
@@ -130,19 +130,38 @@ countTwoPair d ocs cs = countPossHands TwoPair aphs d ocs cs
           apss = combinations 2 allSuits
 
 
--- !!!!!!!!!!!!
--- CHECKED ABOVE HERE TO REMOVE COUNTING OF BETTER HandTypes INSTANCES
--- BELOW STILL TO BE CLEARED OF THEM
--- !!!!!!!!!!!!
+countOnePair d ocs cs = countPossHands OnePair aphs d ocs cs
+    where aphs = [fromVS [v] ss | v <- allValues, ss <- combinations 2 allSuits, noNPlets v ss]
+          noNPlets v ss = all (`notElem` cs) $ makeCs [v,v] (allSuits \\ ss)
 
 
+countHighCard d ocs cs = countPossHands HighCard aphs d ocs cs
+    where aphs = group apcs
+          apcs
+                -- Any Straight Present
+            | any (`subsetOf` csvs) stpvs          = []
+                -- Any Flush present
+            | any ((>4) . length) $ suitGroups cs  = []
+                -- Any nPlet present
+            | any ((>1) . length) $ valueGroups cs = []
+                -- Otherwise just trim the possible Suits and Values sets
+            | otherwise = [Card v s | v <- apvs, s <- apss]
 
-countOnePair = countPossHands OnePair aphs
-    where aphs = [fromVS [v] ss | v <- allValues, ss <- combinations 2 allSuits]
+          apvs = (\\) allValues $ union straightVs nPletsVs
+          apss = allSuits  \\ flushSs
 
+          nPletsVs = csvs
 
-countHighCard = countPossHands HighCard aphs
-    where aphs = group allCards
+          (fss, svs)
+            | length cs >= 4 = (flushSs, straightVs)
+            | otherwise      = ([],[])
+
+          flushSs = map (suit . head) . filter ((>=4) . length) $ suitGroups cs
+          straightVs = concat . filter ((==1) . length) $ map (\\ (sort csvs)) stpvs
+          stpvs = (enumFromTo Two Five ++ [Ace]) : stpvs'
+          stpvs' = take 9 . map (take 5) . tails $ allValues
+
+          csvs = map value cs
 
 
 
@@ -168,18 +187,19 @@ handProb d css = 1 / fromIntegral ((cardsIn d) `choose` (length css))
 
 
 
-
-
-
 ---- 3 - TESTING FUNCTIONS -----------------------------------------------------
 
     -- Test whether any of the count functions yields a HandType which is not
     -- its own. In particular, lookout for ones higher than it
     -- Also, count the instances of each
-checkBetter = res
+checkBetter d ocs cs = res
     where res = map check . reverse $ enumFrom HighCard
-          check ht = (ht, all (== ht) $ check' ht, length $ check' ht)
-          check' ht = map hType . map bestHandType . completers $ (htc ht) initialDeck [] []
+          check ht = (ht, decide cht, length cht)
+            where cht = check' ht
+                  decide cht
+                    | all (== ht) cht = Nothing
+                    | otherwise = Just $ maximum cht
+          check' ht = map hType . map bestHandType . map (union cs) . completers $ (htc ht) d ocs cs
           htc ht = case ht of
             RoyalFlush      -> countRoyalFlush
             StraightFlush   -> countStraightFlush
