@@ -110,7 +110,11 @@ countStraight = countPossHands Straight aphs
     where aphs = [makeCs vs ss | vs <- apvs, ss <- apss]
           apvs = take 10 . map (take 5) . tails $ Ace:allValues
           apss = pss \\ npss
-            -- Remove all StraightFlushes (and Flushes)
+            -- Remove all indirect StraightFlushes (and Flushes) when a Straight
+            -- is acheived, but some adjacent cards create a StraightFlush)
+
+
+            -- Remove all direct StraightFlushes (and Flushes)
           npss = map (replicate 5) $ enumFrom Spades
           pss = map toList $ replicateM 5 allSuits
 
@@ -192,14 +196,9 @@ handProb d css = 1 / fromIntegral ((cardsIn d) `choose` (length css))
     -- Test whether any of the count functions yields a HandType which is not
     -- its own. In particular, lookout for ones higher than it
     -- Also, count the instances of each
-checkBetter d ocs cs = res
-    where res = map check . reverse $ enumFrom HighCard
-          check ht = (ht, decide cht, length cht)
-            where cht = check' ht
-                  decide cht
-                    | all (== ht) cht = Nothing
-                    | otherwise = Just $ maximum cht
-          check' ht = map hType . map bestHandType . map (union cs) . completers $ (htc ht) d ocs cs
+checkBetter d ocs cs = map (\(ht,cht)->(ht,maximum cht)) . filter bad . map (\ht-> (ht, check ht)) . reverse $ enumFrom HighCard
+    where bad (ht,cht) = any (/= ht) cht
+          check ht = map hType . map bestHandType . map (union cs) . completers $ (htc ht) d ocs cs
           htc ht = case ht of
             RoyalFlush      -> countRoyalFlush
             StraightFlush   -> countStraightFlush

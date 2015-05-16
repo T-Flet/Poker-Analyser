@@ -52,6 +52,8 @@ let Just b = sequence $ map toCard ["4c"]
 checkBetter initialDeck b a
 
                     !!!!!!!!!!!!!!
+                        TAKE ACTION ON Straight RETURNING StraighFlush AND OnePair
+                        RETURNING TwoPair
 
             BE AWARE, WHEN LATER DECIDING ON HOW TO USE THE PROBABILITIES (SINGLE
             BY SINGLE OR ALSO INCLUDING THE TOTAL NUMBER OF INSTANCES), THAT BY

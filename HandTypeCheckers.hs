@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.4.2 - 18-19/04/2015
+--          0.5 - 15/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -139,10 +139,19 @@ isFlush cs = isLenType 5 suit $ suitDescGroups cs
     --       but inOrder would have been applied twice (not as efficient)
 isStraightFlush :: [Card] -> Maybe ((Suit,Value),[Card])
 isStraightFlush cs
-    | Just (val,ncs) <- isStraight' , Just (sui,ncs) <- isFlush hocs = Just ((sui, val),ncs)
+    | Just (val,scs) <- isStraight' , Just (sui,_) <- isFlush' = together val scs sui
     | otherwise = Nothing
-        where hocs = head ocs
+        where together val scs sui
+                | okCs `subsetOf` cs = Just ((sui,val),okCs)
+                | otherwise          = Nothing
+                    where okCs = fromSV [sui] $ map value scs
+                -- The reason for the above function instead of checking that
+                -- the returned sets of cards are the same is that the Straight
+                -- cards could include an element which is not of the same Suit
+                -- even though the one that is is present in cs
+              isFlush' = isLenType 5 suit sdcs
               isStraight' = isLenType 5 value ocs
+              sdcs = suitDescGroups cs
               ocs = inOrder cs
 
 
@@ -185,13 +194,14 @@ is2Nplet n m cs
 
 
     -- Given a list of lists of cards, return the suit or value of the first
-    -- element in the first list in it if the given list's length is greater
-    -- than or equal to n. Also return the first 5 cards
+    -- element in the first list in it if the Card list's length is at least n.
+    -- Also return the first 5 cards
+    -- Note: it seems like a weird task, but it is common to many check functions
 isLenType :: Int -> (Card -> a) -> [[Card]] -> Maybe (a,[Card])
-isLenType n suitOrValue cs
-    | length hcs >= n = Just (suitOrValue $ head hcs, take 5 $ concat cs)
+isLenType n suitOrValue css
+    | length hcs >= n = Just (suitOrValue $ head hcs, take 5 $ concat css)
     | otherwise       = Nothing
-        where hcs = head cs
+        where hcs = head css
 
 
     -- Return a list of lists of cards grouped if of consecutive values
