@@ -136,6 +136,7 @@ countTwoPair d ocs cs = countPossHands TwoPair aphs d ocs cs
 
 countOnePair d ocs cs = countPossHands OnePair aphs d ocs cs
     where aphs = [fromVS [v] ss | v <- allValues, ss <- combinations 2 allSuits, noNPlets v ss]
+            -- THERE ARE SOME TwoPairS GETTING THROUGH...
           noNPlets v ss = all (`notElem` cs) $ makeCs [v,v] (allSuits \\ ss)
 
 
