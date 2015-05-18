@@ -106,17 +106,27 @@ countFlush = countPossHands Flush aphs
           npvs' = take 9 . map (take 5) . tails $ allValues
 
 
-countStraight = countPossHands Straight aphs
-    where aphs = [makeCs vs ss | vs <- apvs, ss <- apss]
-          apvs = take 10 . map (take 5) . tails $ Ace:allValues
-          apss = pss \\ npss
+countStraight d ocs cs = countPossHands Straight aphs d ocs cs
+    where aphs = phs \\ nphs
+          phs = [makeCs vs ss | vs <- apvs, ss <- apss]
             -- Remove all indirect StraightFlushes (and Flushes) when a Straight
             -- is acheived, but some adjacent cards create a StraightFlush)
+          nphs = map getCs $ suitGroups cs
 
-
+          apvs = take 10 . map (take 5) . tails $ Ace:allValues
+          apss = pss \\ npss
             -- Remove all direct StraightFlushes (and Flushes)
           npss = map (replicate 5) $ enumFrom Spades
           pss = map toList $ replicateM 5 allSuits
+
+          getCs c
+            | vc == Ace  = map (apvs!!) $ [1,8]
+            | vc <= Five = above
+            | vc >= Ten  = below
+            | otherwise  = concat above below
+                where vc = value c
+                      above = fromSV (suit c) . take 5 $ enumFrom vc
+                      below = fromSV (suit c) . take 5 $ enumFromThen vc (pred vc)
 
 
 countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs
