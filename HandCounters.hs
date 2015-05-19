@@ -119,14 +119,15 @@ countStraight d ocs cs = countPossHands Straight aphs d ocs cs
           npss = map (replicate 5) $ enumFrom Spades
           pss = map toList $ replicateM 5 allSuits
 
-          getCs c
-            | vc == Ace  = map (apvs!!) $ [1,8]
-            | vc <= Five = above
-            | vc >= Ten  = below
-            | otherwise  = concat above below
-                where vc = value c
-                      above = fromSV (suit c) . take 5 $ enumFrom vc
-                      below = fromSV (suit c) . take 5 $ enumFromThen vc (pred vc)
+            -- COMPLETELY REDO BELOW PART, DIFFERENTLY ALTOGHETHER
+          --getCs c
+          --  | vc == Ace  = map (apvs!!) $ [1,8]
+          --  | vc <= Five = above
+          --  | vc >= Ten  = below
+          --  | otherwise  = concat above below
+          --      where vc = value c
+          --            above = fromSV (suit c) . take 5 $ enumFrom vc
+          --            below = fromSV (suit c) . take 5 $ enumFromThen vc (pred vc)
 
 
 countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs
