@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.6 - 14-15/05/2015
+--          0.7 - 21/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -27,7 +27,7 @@ module HandCounters where
 import DataTypes
 import GeneralFunctions (choose, combinations, ascLength, subsetOf)
 
-import Data.List (tails, group, sort, sortBy, delete, union, (\\))
+import Data.List (tails, group, sort, sortBy, delete, nub, union, (\\))
 import Data.Sequence (replicateM)
 import Data.Foldable (toList)
 
@@ -107,27 +107,19 @@ countFlush = countPossHands Flush aphs
 
 
 countStraight d ocs cs = countPossHands Straight aphs d ocs cs
-    where aphs = phs \\ nphs
-          phs = [makeCs vs ss | vs <- apvs, ss <- apss]
-            -- Remove all indirect StraightFlushes (and Flushes) when a Straight
+    where aphs = filter (\h-> not $ any (`subsetOf` h) npcs) phs
+            -- Remove all indirect StraightFlushes (and Flushes): when a Straight
             -- is acheived, but some adjacent cards create a StraightFlush)
-          nphs = map getCs $ suitGroups cs
+          npcs = nub . concat $ map strFluCs cs
+          strFluCs c = map (fromSV [suit c]) . strFluVs $ value c
+          strFluVs v = map (delete v) $ filter (v `elem`) apvs
 
+          phs = [makeCs vs ss | vs <- apvs, ss <- apss]
           apvs = take 10 . map (take 5) . tails $ Ace:allValues
           apss = pss \\ npss
             -- Remove all direct StraightFlushes (and Flushes)
           npss = map (replicate 5) $ enumFrom Spades
           pss = map toList $ replicateM 5 allSuits
-
-            -- COMPLETELY REDO BELOW PART, DIFFERENTLY ALTOGHETHER
-          --getCs c
-          --  | vc == Ace  = map (apvs!!) $ [1,8]
-          --  | vc <= Five = above
-          --  | vc >= Ten  = below
-          --  | otherwise  = concat above below
-          --      where vc = value c
-          --            above = fromSV (suit c) . take 5 $ enumFrom vc
-          --            below = fromSV (suit c) . take 5 $ enumFromThen vc (pred vc)
 
 
 countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs

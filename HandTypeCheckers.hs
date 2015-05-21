@@ -205,6 +205,7 @@ isLenType n suitOrValue css
 
 
     -- Return a list of lists of cards grouped if of consecutive values
+    -- Single lists are in descending value order
     -- NOTE: Caters for Aces being both lower than Twos and higher than Kings by
     -- duplicating them
 inOrder :: [Card] -> [[Card]]

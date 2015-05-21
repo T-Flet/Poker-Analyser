@@ -99,14 +99,9 @@ makeCs vs ss = map (\(v,s)-> Card v s) $ zip vs ss
     -- Sort cards by suit first (as in deck order)
 sortBySuit :: [Card] -> [Card]
 sortBySuit cs = sortBy cmpSui cs
-    where cmpSui c1 c2
-            | s1 >  s2 = GT
-            | s1 == s2 = compare v1 v2
-            | s1 <  s2 = LT
-                where v1 = value c1
-                      v2 = value c2
-                      s1 = suit  c1
-                      s2 = suit  c2
+    where cmpSui c1 c2 = case (compare `on` suit) c1 c2 of
+            EQ -> (compare `on` value) c1 c2
+            x  -> x
 
 
     -- Maybe get a card from a pair of value and suit characters
