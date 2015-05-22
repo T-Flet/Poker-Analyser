@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.7 - 21/05/2015
+--          0.8 - 22/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -27,7 +27,7 @@ module HandCounters where
 import DataTypes
 import GeneralFunctions (choose, combinations, ascLength, subsetOf)
 
-import Data.List (tails, group, sort, sortBy, delete, nub, union, (\\))
+import Data.List (tails, group, sort, sortBy, delete, nub, partition, union, (\\))
 import Data.Sequence (replicateM)
 import Data.Foldable (toList)
 
@@ -138,9 +138,16 @@ countTwoPair d ocs cs = countPossHands TwoPair aphs d ocs cs
 
 
 countOnePair d ocs cs = countPossHands OnePair aphs d ocs cs
-    where aphs = [fromVS [v] ss | v <- allValues, ss <- combinations 2 allSuits, noNPlets v ss]
-            -- THERE ARE SOME TwoPairS GETTING THROUGH...
-          noNPlets v ss = all (`notElem` cs) $ makeCs [v,v] (allSuits \\ ss)
+    where aphs
+            | null nokvdgs = csvshs ++ ncsvshs
+            | otherwise    = []
+          csvshs = [[Card v s] | v <- csvs, s <- allSuits]
+          ncsvshs = [fromVS [v] ss | v <- ncsvs, ss <- combinations 2 allSuits]
+
+          ncsvs = allValues \\ csvs
+          csvs = map (value . head) vdgs
+          (okvdgs, nokvdgs) = partition ((==1) . length) vdgs
+          vdgs = valueDescGroups cs
 
 
 countHighCard d ocs cs = countPossHands HighCard aphs d ocs cs
