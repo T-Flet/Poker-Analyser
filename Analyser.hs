@@ -173,7 +173,7 @@ help = " \n\
 \   s<Int>d         Player x is dealer (the actual player is the first in whichever direction) \n\
 \ \n\
 \   -- Player related commands start with p \n\
-\   p<Int>b         Player x Folds \n\
+\   p<Int>f         Player x Folds \n\
 \   p<Int>b <Int>   Player x Bets amount (or Raises, but reporting the bet) \n\
 \   p<Int>r <Int>   Player x Raises by amount \n\
 \ \n\
@@ -181,7 +181,7 @@ help = " \n\
 \ \n\
 \   b               Back one action \n\
 \ \n\
-\   -- Card related commands start with p \n\
+\   -- Card related commands start with c \n\
 \   ci <value><suit>(x2)    Set initial hand \n\
 \   cf <value><suit>(x3)    Flop \n\
 \   ct <value><suit>        Turn \n\
@@ -223,7 +223,7 @@ setPlayersNum s n = addFrame s [("action", FA (SetPlayers n)), ("playersNum", FI
 setUserNum :: State -> Int -> (State,String)
 setUserNum s@(f:_) n = case find ((== n) . num) $ players f of
     Nothing -> (s, "Non-existent player")
-    Just p  -> (ns, "Players number set to " ++ show n)
+    Just p  -> (ns, "User number set to " ++ show n)
         where ns = addFrame s [("action", FA (SetUser n)), ("userNum", FI n)]
 
 
