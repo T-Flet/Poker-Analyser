@@ -34,6 +34,7 @@
             - SINCE THEY ARE DONE NOW, CONSIDER, INSTEAD, EXTENDING THE TESTS IN
                 countHighCard TO OTHER count FUNCTIONS
             - CHECK WITH RANDOMLY GENERATED HANDS ON checkBetter
+            - USE QuickCheck!!!!!!!!!!!!!!!!!!!!
 
                     ANALYSE THIS!!!!!!!!!!!!!!
 
