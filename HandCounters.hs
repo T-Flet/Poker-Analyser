@@ -207,6 +207,7 @@ handProb d css = 1 / fromIntegral ((cardsIn d) `choose` (length css))
     -- Test whether any of the count functions yields a HandType which is not
     -- its own. In particular, lookout for ones higher than it
     -- Also, count the instances of each
+checkBetter :: Deck -> [Card] -> [Card] -> [(HandType, HandType)]
 checkBetter d ocs cs = map (\(ht,cht)->(ht,maximum cht)) . filter bad . map (\ht-> (ht, check ht)) . reverse $ enumFrom HighCard
     where bad (ht,cht) = any (/= ht) cht
           check ht = map hType . map bestHandType . map (union cs) . completers $ (htc ht) d ocs cs
