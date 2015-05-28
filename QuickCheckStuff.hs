@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.1 - 26-27/05/2015
+--          0.2 - 27-28/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -58,7 +58,7 @@ checkBetterProp ocs cs =
     length ocs <= 2 ==>
     length cs  <= 7 ==>
     length ocs + length cs <= 7 ==>
-        all (\tup-> fst tup == snd tup) ress
+        null ress
     where ress = checkBetter initialDeck ocs cs
 
 

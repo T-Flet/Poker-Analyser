@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.8 - 22/05/2015
+--          0.9 - 27-28/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -28,7 +28,7 @@ import DataTypes
 import GeneralFunctions (choose, combinations, ascLength, subsetOf)
 
 import Data.List (tails, group, sort, sortBy, delete, nub, partition, union, (\\))
-import Data.Sequence (replicateM)
+import qualified Data.Sequence as Seq (replicateM)
 import Data.Foldable (toList)
 
 
@@ -72,12 +72,14 @@ countRoyalFlush = countPossHands RoyalFlush aphs
 
 countStraightFlush d ocs cs = countPossHands StraightFlush aphs d ocs cs
     where aphs = filter ((`notElem` cs) . succ . last) phs
-            -- Remove the Straights which, if present, are overshadowed by another
-            -- greater by one (the Card just above them is in cs)
-            -- Note: no risk of error on succ because only 9 taken below
           phs = concat $ map (fromSVG allSuits) apvs
+            -- Remove the Straights which, if present, are overshadowed by another
+            -- greater by one (a Card of Value just above them is in cs)
+            -- Note: no risk of error on succ because only 9 taken below
+          apvs = filter ((`notElem` csvs) . succ . last) pvs
+          csvs = nub $ map value cs
             -- Taking 9 and not 10 prevents RoyalFlushes
-          apvs = take 9 . map (take 5) . tails $ Ace:allValues
+          pvs = take 9 . map (take 5) . tails $ Ace:allValues
 
 
 countFourOfAKind = countPossHands FourOfAKind aphs
@@ -96,30 +98,44 @@ countFullHouse d ocs cs = countPossHands FullHouse aphs d ocs cs
           noFourOfAKinds2 v ss = not . all (`elem` cs) $ makeCs (repeat v) (allSuits \\ ss)
 
 
-countFlush = countPossHands Flush aphs
+countFlush d ocs cs = countPossHands Flush aphs d ocs cs
     where aphs = [fromSV [s] vs | vs <- apvs, s <- allSuits]
             -- Remove all FullHouses and FourOfAKinds
           apvs = filter ((>2) . length . group . sort) pvs
+            -- Note that each combination below is sorted by ascending Value
           pvs = combinations 5 allValues \\ npvs
-            -- Remove all Straights (has to be in this order to do so efficiently)
-          npvs = (enumFromTo Two Five ++ [Ace]) : npvs'
-          npvs' = take 9 . map (take 5) . tails $ allValues
+          npvs = implStrVs ++ explStrVs
+            -- Implicit Straight Values (formed with the addition of the considered Cards)
+          implStrVs = concat $ map getVs npCompletersVs
+          getVs (origVs,vs) = map (\comVs-> sort (vs ++ comVs)) $ combinations (5 - length vs) (allValues \\ origVs)
+          npCompletersVs = map (\vs-> (vs, vs \\ csvs)) explStrVs
+          csvs = nub $ map value cs
+            -- Explicit Straight Values (has to be in this order to do so efficiently)
+          explStrVs = (enumFromTo Two Five ++ [Ace]) : explStrVs'
+          explStrVs' = take 9 . map (take 5) . tails $ allValues
 
 
 countStraight d ocs cs = countPossHands Straight aphs d ocs cs
     where aphs = filter (\h-> not $ any (`subsetOf` h) npcs) phs
-            -- Remove all indirect StraightFlushes (and Flushes): when a Straight
+            -- Remove all indirect StraightFlushes: when a Straight
             -- is acheived, but some adjacent cards create a StraightFlush)
           npcs = nub . concat $ map strFluCs cs
           strFluCs c = map (fromSV [suit c]) . strFluVs $ value c
           strFluVs v = map (delete v) $ filter (v `elem`) apvs
 
-          phs = [makeCs vs ss | vs <- apvs, ss <- apss]
+          phs = [makeCs vs ss | vs <- apvs, ss <- apss, noImplicitFlush ss]
+          noImplicitFlush ss = all (<5) $ map checkNums allSuits
+            where checkNums s = sLookup s sgNums + sLookup s ssNums
+                    -- No need to call in Data.Map to use its lookup function
+                  sLookup s nums = case filter ((==s) . fst) nums of [] -> 0 ; [(_,n)] -> n
+                  ssNums = map (\sl-> (head sl, length sl)) . reverse . group $ sort ss
+                  sgNums = map (\sg-> (suit $ head sg, length sg)) $ suitGroups cs
+
           apvs = take 10 . map (take 5) . tails $ Ace:allValues
           apss = pss \\ npss
             -- Remove all direct StraightFlushes (and Flushes)
-          npss = map (replicate 5) $ enumFrom Spades
-          pss = map toList $ replicateM 5 allSuits
+          npss = map (replicate 5) allSuits
+          pss = map toList $ Seq.replicateM 5 allSuits
 
 
 countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs
@@ -207,9 +223,9 @@ handProb d css = 1 / fromIntegral ((cardsIn d) `choose` (length css))
     -- Test whether any of the count functions yields a HandType which is not
     -- its own. In particular, lookout for ones higher than it
     -- Also, count the instances of each
-checkBetter :: Deck -> [Card] -> [Card] -> [(HandType, HandType)]
-checkBetter d ocs cs = map (\(ht,cht)->(ht,maximum cht)) . filter bad . map (\ht-> (ht, check ht)) . reverse $ enumFrom HighCard
-    where bad (ht,cht) = any (/= ht) cht
+checkBetter :: Deck -> [Card] -> [Card] -> [(HandType, [HandType])]
+checkBetter d ocs cs = filter (not . null . snd) . map bad . map (\ht-> (ht, check ht)) . reverse $ enumFrom HighCard
+    where bad (ht,cht) = (ht, nub . sort $ filter (/= ht) cht)
           check ht = map hType . map bestHandType . map (union cs) . completers $ (htc ht) d ocs cs
           htc ht = case ht of
             RoyalFlush      -> countRoyalFlush

@@ -26,6 +26,8 @@
 
     GO OVER ALL count FUNCTIONS AND MAKE SURE THAT:
         - TEST THE EMPTY LISTS CASES
+        - MAKE SURE THAT WHILE DOING THESE STEPS NO INSTANCES ARE WRONGLY REMOVED BY
+            TOO BROAD A REMOVAL SPECTRUM IN SOME FUNCTION
         - IF A HandType IS ALREADY PRESENT A PROBABILITY OF 1 IS RETURNED AND
             ALSO ONLY THE BETTER ONES OF THE SAME KIND (IF THEY ARE POSSIBLE (NOT ALWAYS))
         - INSTANCES OF BETTER HandTypes ARE NEVER RETURNED
@@ -36,14 +38,13 @@
             - CHECK WITH RANDOMLY GENERATED HANDS ON checkBetter
             - USE QuickCheck!!!!!!!!!!!!!!!!!!!!
 
-                    ANALYSE THIS!!!!!!!!!!!!!!
+                    ANALYSE THIS!!!!!!!!!!!!!! (GOT FROM QUICKCHECK)
 
-let Just a = sequence $ map toCard ["ks", "1h", "1s", "9s"]
-let Just b = sequence $ map toCard ["4c"]
-checkBetter initialDeck b a
+checkBetter initialDeck [] [Card Nine Spades, Card Six Hearts]
+
+> [(Flush,[StraightFlush])]
 
                     !!!!!!!!!!!!!!
-                        AT PRESENT RETURNING: []    GOOD
 
 
             BE AWARE, WHEN LATER DECIDING ON HOW TO USE THE PROBABILITIES (SINGLE
