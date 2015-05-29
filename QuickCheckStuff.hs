@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.2 - 27-28/05/2015
+--          0.3 - 28/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -13,25 +13,25 @@
 --
 --   Sections:
 --       0 - Imports
---       1 - Card Related Checks
---       2 - Hand Related Checks
---       3 - State Related Checks
+--       1 - HandTypeCounters Checks
+--       2 - Compiled Testing Shell Stuff
 --
 
 
 
 ---- 0 - IMPORTS ---------------------------------------------------------------
 
-module QuickCheckStuff where
+--module QuickCheckStuff where
 
 import DataTypes
 import HandCounters
 
 import Test.QuickCheck
+import Data.List (nub)
 
 
 
----- 1 - CARD RELATED CHECKS ---------------------------------------------------
+---- 1 - HANDTYPECOUNTERS CHECKS -----------------------------------------------
 
 instance Arbitrary Value where
     arbitrary = elements allValues
@@ -44,24 +44,46 @@ instance Arbitrary Card where
 
 
 
+-- Properties --
 
-
-
-
-
-
-
-
-
-
-checkBetterProp ocs cs =
+checkAllHtCsProp ocs cs =
     length ocs <= 2 ==>
     length cs  <= 7 ==>
     length ocs + length cs <= 7 ==>
+        -- Lists of unique elements
+    nub ocs == ocs && nub cs == cs ==>
         null ress
-    where ress = checkBetter initialDeck ocs cs
+    where ress = checkAllHtCs initialDeck ocs cs
 
 
+
+---- 2 - COMPILED TESTING SHELL STUFF ------------------------------------------
+
+    -- Compile with: ghc -o PokerTestingIsaac -O QuickCheckStuff
+    -- Then delete all the intermediate files in the repo
+
+main = do
+    putStrLn "\nDr_lord's Poker Analyser: HandType counting functions preliminary testing"
+    putStrLn "Meant for Isaac Jordan, 28/05/2015"
+    checkInput
+
+checkInput = do
+    putStrLn "\nPlease enter either 'quit', 'quick' or 'verbose'"
+    putStrLn "(Use 'verbose' if you feel like looking at what the tests are on and how they are going):"
+    cmd <- getLine
+    case cmd of
+        "quit" -> do
+                    putStrLn "\nThank you for testing. Please send me a print of your results, XD"
+                    putStrLn "The important part usually is just the last 3 lines; it will be something like 'True because...' or 'Falsifiable after...'"
+        "quick" -> do
+                    quickCheck checkAllHtCsProp
+                    checkInput
+        "verbose" -> do
+                    verboseCheck checkAllHtCsProp
+                    checkInput
+        _ -> do
+                putStrLn "Unrecognised input"
+                checkInput
 
 
 

@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.9 - 27-28/05/2015
+--          0.10 - 28-29/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -78,8 +78,8 @@ countStraightFlush d ocs cs = countPossHands StraightFlush aphs d ocs cs
             -- Note: no risk of error on succ because only 9 taken below
           apvs = filter ((`notElem` csvs) . succ . last) pvs
           csvs = nub $ map value cs
-            -- Taking 9 and not 10 prevents RoyalFlushes
-          pvs = take 9 . map (take 5) . tails $ Ace:allValues
+            -- Taking 9 (init) and not 10 prevents RoyalFlushes
+          pvs = init straightValues
 
 
 countFourOfAKind = countPossHands FourOfAKind aphs
@@ -108,11 +108,12 @@ countFlush d ocs cs = countPossHands Flush aphs d ocs cs
             -- Implicit Straight Values (formed with the addition of the considered Cards)
           implStrVs = concat $ map getVs npCompletersVs
           getVs (origVs,vs) = map (\comVs-> sort (vs ++ comVs)) $ combinations (5 - length vs) (allValues \\ origVs)
-          npCompletersVs = map (\vs-> (vs, vs \\ csvs)) explStrVs
+          npCompletersVs = concat $ map getNpComplVs explStrVs
+          getNpComplVs origVs = nub $ map (\vs-> (origVs, origVs \\ vs)) csvsCombs
+          csvsCombs = concat $ map (flip combinations csvs) [1..length csvs]
           csvs = nub $ map value cs
             -- Explicit Straight Values (has to be in this order to do so efficiently)
-          explStrVs = (enumFromTo Two Five ++ [Ace]) : explStrVs'
-          explStrVs' = take 9 . map (take 5) . tails $ allValues
+          explStrVs = (enumFromTo Two Five ++ [Ace]) : (tail straightValues)
 
 
 countStraight d ocs cs = countPossHands Straight aphs d ocs cs
@@ -131,7 +132,7 @@ countStraight d ocs cs = countPossHands Straight aphs d ocs cs
                   ssNums = map (\sl-> (head sl, length sl)) . reverse . group $ sort ss
                   sgNums = map (\sg-> (suit $ head sg, length sg)) $ suitGroups cs
 
-          apvs = take 10 . map (take 5) . tails $ Ace:allValues
+          apvs = straightValues
           apss = pss \\ npss
             -- Remove all direct StraightFlushes (and Flushes)
           npss = map (replicate 5) allSuits
@@ -146,9 +147,14 @@ countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs
 
 
 countTwoPair d ocs cs = countPossHands TwoPair aphs d ocs cs
-    where aphs = [fromVS [v1] ss1 ++ fromVS [v2] ss2 | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, noNPlets v1 v2 ss1 ss2]
-            -- Ensure that no ThreeOfAKinds can happen
+    where aphs = [fromVS [v1] ss1 ++ fromVS [v2] ss2 | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, noBetterHts v1 v2 ss1 ss2]
+          noBetterHts v1 v2 ss1 ss2 = noNPlets v1 v2 ss1 ss2 && noStraights [v1,v2]
+            -- Implicit Three or Four OfAKinds
           noNPlets v1 v2 ss1 ss2 = all (`notElem` cs) $ makeCs [v1,v1,v2,v2] (concat $ map (allSuits\\) [ss1,ss2])
+            -- Implicit Straights
+          noStraights vs = not $ any ((`subsetOf` csvs) . (\\vs)) straightValues
+          csvs = nub $ map value cs
+
           apvs = combinations 2 allValues
           apss = combinations 2 allSuits
 
@@ -189,8 +195,7 @@ countHighCard d ocs cs = countPossHands HighCard aphs d ocs cs
 
           flushSs = map (suit . head) . filter ((>=4) . length) $ suitGroups cs
           straightVs = concat . filter ((==1) . length) $ map (\\ (sort csvs)) stpvs
-          stpvs = (enumFromTo Two Five ++ [Ace]) : stpvs'
-          stpvs' = take 9 . map (take 5) . tails $ allValues
+          stpvs = (enumFromTo Two Five ++ [Ace]) : (tail straightValues)
 
           csvs = map value cs
 
@@ -217,24 +222,42 @@ handProb :: (Fractional a) => Deck -> [Card] -> a
 handProb d css = 1 / fromIntegral ((cardsIn d) `choose` (length css))
 
 
+    -- List of Straight Values
+straightValues :: [[Value]]
+straightValues = take 10 . map (take 5) . tails $ Ace:allValues
+
+
 
 ---- 3 - TESTING FUNCTIONS -----------------------------------------------------
 
     -- Test whether any of the count functions yields a HandType which is not
     -- its own. In particular, lookout for ones higher than it
     -- Also, count the instances of each
-checkBetter :: Deck -> [Card] -> [Card] -> [(HandType, [HandType])]
-checkBetter d ocs cs = filter (not . null . snd) . map bad . map (\ht-> (ht, check ht)) . reverse $ enumFrom HighCard
+checkAllHtCs :: Deck -> [Card] -> [Card] -> [(HandType, [HandType])]
+checkAllHtCs d ocs cs = filter (not . null . snd) . map bad . map getChecks . reverse $ enumFrom HighCard
     where bad (ht,cht) = (ht, nub . sort $ filter (/= ht) cht)
-          check ht = map hType . map bestHandType . map (union cs) . completers $ (htc ht) d ocs cs
-          htc ht = case ht of
-            RoyalFlush      -> countRoyalFlush
-            StraightFlush   -> countStraightFlush
-            FourOfAKind     -> countFourOfAKind
-            FullHouse       -> countFullHouse
-            Flush           -> countFlush
-            Straight        -> countStraight
-            ThreeOfAKind    -> countThreeOfAKind
-            TwoPair         -> countTwoPair
-            OnePair         -> countOnePair
-            HighCard        -> countHighCard
+          getChecks ht = (ht, checkHtc ht d ocs cs)
+
+    -- Map each HandType to its counter function
+getHtcFunc :: HandType -> (Deck -> [Card] -> [Card] -> HandTypeCount)
+getHtcFunc ht = case ht of
+    RoyalFlush      -> countRoyalFlush
+    StraightFlush   -> countStraightFlush
+    FourOfAKind     -> countFourOfAKind
+    FullHouse       -> countFullHouse
+    Flush           -> countFlush
+    Straight        -> countStraight
+    ThreeOfAKind    -> countThreeOfAKind
+    TwoPair         -> countTwoPair
+    OnePair         -> countOnePair
+    HighCard        -> countHighCard
+
+
+    -- Return all the completers which yield different HandTypes than the required one
+filterBad :: HandType -> Deck -> [Card] -> [Card] -> [[Card]]
+filterBad ht d ocs cs = filter ((/=ht) . checkSingle cs) . completers $ (getHtcFunc ht) d ocs cs
+    -- Return all the HandTypes yielded by each completer
+checkHtc  ht d ocs cs = map    (checkSingle cs)          . completers $ (getHtcFunc ht) d ocs cs
+    -- Return the HandType yielded by a completer
+checkSingle cs = hType . bestHandType . union cs
+

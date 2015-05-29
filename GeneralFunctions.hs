@@ -46,6 +46,8 @@ n `chooseUnsafe` k = product [k+1..n] `div` product [1..n-k]
     -- NOTE: This is a direct translation of the mathematical recurrence
     -- relation of Binomial Coefficients
     -- NOTE: (length $ combinations k xs) == ((length xs) `choose` k)
+    -- NOTE: If using this function leads to a non-exhaustive condition error,
+    --      the cause probably is a non-acceptable input (k>n, negative values, ...)
 combinations :: Int -> [a] -> [[a]]
 combinations k xs = combinations' (length xs) k xs
   where combinations' n k' ls@(y:ys)
