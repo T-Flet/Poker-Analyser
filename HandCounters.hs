@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.10 - 28-29/05/2015
+--          0.11 - 29/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -49,6 +49,9 @@ import HandTypeCheckers
 
     -- Note: each function avoids counting instances of their HandType which
     -- qualify as a higher one as well.
+
+    -- Note: most of these functions break down with unreasonable input (like
+    -- lists of identical cards, which are not possible)
 
 
     -- Apply all HandTypes' Instances Calculators to the given cards
@@ -140,20 +143,31 @@ countStraight d ocs cs = countPossHands Straight aphs d ocs cs
 
 
 countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs
-    where aphs = [makeCs [v,v,v] (delete s allSuits) | v <- apvs, s <- allSuits, noFourOfAKinds v s]
-          noFourOfAKinds v s = Card v s `notElem` cs
-          apvs = if null nPletsVs then allValues else nPletsVs
-          nPletsVs = map (value . head) . filter ((>1) . length) $ valueGroups cs
+    where aphs = case length nPletsVgs of
+            x | x > 1  -> []
+            1 -> case length hnpvgs of
+                y | y > 3 -> []
+                3 -> nPletsVgs
+                _ -> [makeCs [v,v,v] (sort (s:ss)) | s <- allSuits \\ ss] -- A single pair
+                        where v = value $ head hnpvgs
+                              ss = map suit hnpvgs
+            _ -> [makeCs [v,v,v] (delete s allSuits) | v <- allValues, s <- allSuits, noFourOfAKinds v s]
+                    where noFourOfAKinds v s = Card v s `notElem` cs
+
+          hnpvgs = head nPletsVgs
+          nPletsVgs = filter ((>1) . length) $ valueGroups cs
 
 
 countTwoPair d ocs cs = countPossHands TwoPair aphs d ocs cs
-    where aphs = [fromVS [v1] ss1 ++ fromVS [v2] ss2 | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, noBetterHts v1 v2 ss1 ss2]
-          noBetterHts v1 v2 ss1 ss2 = noNPlets v1 v2 ss1 ss2 && noStraights [v1,v2]
+    where aphs = [ncs | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, let ncs = fromVS [v1] ss1 ++ fromVS [v2] ss2, noBetterHts ncs v1 v2 ss1 ss2]
+          noBetterHts ncs v1 v2 ss1 ss2 = noNPlets v1 v2 ss1 ss2 && noStraights [v1,v2] && noFlushes ncs
             -- Implicit Three or Four OfAKinds
           noNPlets v1 v2 ss1 ss2 = all (`notElem` cs) $ makeCs [v1,v1,v2,v2] (concat $ map (allSuits\\) [ss1,ss2])
             -- Implicit Straights
           noStraights vs = not $ any ((`subsetOf` csvs) . (\\vs)) straightValues
           csvs = nub $ map value cs
+            -- Implicit Flushes
+          noFlushes ncs = not . any ((>=5) . length) . suitGroups $ union cs ncs
 
           apvs = combinations 2 allValues
           apss = combinations 2 allSuits
@@ -161,15 +175,15 @@ countTwoPair d ocs cs = countPossHands TwoPair aphs d ocs cs
 
 countOnePair d ocs cs = countPossHands OnePair aphs d ocs cs
     where aphs
-            | null nokvdgs = csvshs ++ ncsvshs
-            | otherwise    = []
+            | null nPletsVgs = csvshs ++ ncsvshs
+            | otherwise      = []
           csvshs = [[Card v s] | v <- csvs, s <- allSuits]
           ncsvshs = [fromVS [v] ss | v <- ncsvs, ss <- combinations 2 allSuits]
 
           ncsvs = allValues \\ csvs
-          csvs = map (value . head) vdgs
-          (okvdgs, nokvdgs) = partition ((==1) . length) vdgs
-          vdgs = valueDescGroups cs
+          csvs = map (value . head) vgs
+          (okvgs, nPletsVgs) = partition ((==1) . length) vgs
+          vgs = valueGroups cs
 
 
 countHighCard d ocs cs = countPossHands HighCard aphs d ocs cs

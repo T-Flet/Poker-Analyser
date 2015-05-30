@@ -24,12 +24,17 @@
 
     DO SOMETHING WITH THE Deck TYPE; USE IT IN THE count FUNCTIONS
 
+    IMPLEMENT ALL CHECKS FOR NON ALLOWED ACTIONS AND CARDS IN THE SHELL, ESPECIALLY
+    HAVING THE SAME CARD TWIC, WHICH BREAKS MOST count FUNCTIONS
+
     GO OVER ALL count FUNCTIONS AND MAKE SURE THAT:
         - TEST THE EMPTY LISTS CASES
         - MAKE SURE THAT WHILE DOING THESE STEPS NO INSTANCES ARE WRONGLY REMOVED BY
             TOO BROAD A REMOVAL SPECTRUM IN SOME FUNCTION
-        - IF A HandType IS ALREADY PRESENT A PROBABILITY OF 1 IS RETURNED AND
+        - IF A HandType IS ALREADY PRESENT A PROBABILITY OF 1 IS RETURNED (PERHAPS REMOVE
+            THE NULL LISTS REMOVAL IN THE GENERAL COUNTING FUNCTION) AND
             ALSO ONLY THE BETTER ONES OF THE SAME KIND (IF THEY ARE POSSIBLE (NOT ALWAYS))
+            OR THE USER COULD ASK FOR THE BETTER INSTANCES OF THE SAME HandType SEPARATELY?
         - INSTANCES OF BETTER HandTypes ARE NEVER RETURNED
             - CONSIDER DOING IT MORE ABSTRACTLY WITH CHECKERS FOR ALL OR JUST THE
                 COMPLICATED ONES
@@ -42,17 +47,11 @@
 
 checkAllHtCs initialDeck [] cs
 
-let cs = [Card Nine Diamonds, Card Nine Diamonds]
-> [(FullHouse,[FourOfAKind]),(ThreeOfAKind,[FourOfAKind]),(TwoPair,[FullHouse])]
+JUST SOLVED ThreeOfAKind RETURNING FullHouseS AND [(TwoPair,[Flush])]
 
-let cs = [Card Seven Diamonds, Card King Spades, Card Seven Clubs, Card King Hearts]
-> [(ThreeOfAKind,[FullHouse])]
 
-let cs = [Card Two Hearts, Card Five Hearts, Card Ten Hearts]
-> [(TwoPair,[Flush])]
-
-let cs = [Card Two Diamonds, Card Queen Diamonds, Card King Diamonds]
-> [(TwoPair,[Flush])]
+let cs = [Card Three Clubs, Card Ace Clubs, Card Four Clubs, Card Two Clubs]
+> [(ThreeOfAKind,[Straight,Flush,StraightFlush]),(OnePair,[Straight,Flush,StraightFlush])]
 
                     !!!!!!!!!!!!!!
 
