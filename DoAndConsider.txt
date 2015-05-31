@@ -25,7 +25,14 @@
     DO SOMETHING WITH THE Deck TYPE; USE IT IN THE count FUNCTIONS
 
     IMPLEMENT ALL CHECKS FOR NON ALLOWED ACTIONS AND CARDS IN THE SHELL, ESPECIALLY
-    HAVING THE SAME CARD TWIC, WHICH BREAKS MOST count FUNCTIONS
+    HAVING THE SAME CARD TWICE, WHICH BREAKS MOST count FUNCTIONS
+
+    REALLY CONSIDER JUST BULDING A DUMMED DOWN VERSION OF HandType CHEKERS (Bool OUTPUT)
+    TO UNIFY THE WAY THEY ARE CHECKED, SACRIFICING SOME SPEED
+        OR, JUST GENERALISE THE noSOMEHANDTYPE FUNCTIONS AND CALL THEM WHERE NEEDED
+
+        AAAAAND: RETOUCH THE FINAL ASSEMBLING FUNCTION BY PERFORMING THE SAME GERELA TESTS TO
+            DETERMINE WHICH count FUNCTIONS WOULD JUST RETURN [], THEREBY SAVING PRECIOUS TIME
 
     GO OVER ALL count FUNCTIONS AND MAKE SURE THAT:
         - TEST THE EMPTY LISTS CASES
@@ -47,11 +54,11 @@
 
 checkAllHtCs initialDeck [] cs
 
-JUST SOLVED ThreeOfAKind RETURNING FullHouseS AND [(TwoPair,[Flush])]
+JUST SOLVED [(ThreeOfAKind,[Straight,Flush,StraightFlush]),(OnePair,[Straight,Flush,StraightFlush])]
 
 
-let cs = [Card Three Clubs, Card Ace Clubs, Card Four Clubs, Card Two Clubs]
-> [(ThreeOfAKind,[Straight,Flush,StraightFlush]),(OnePair,[Straight,Flush,StraightFlush])]
+let cs = [Card Ace Clubs, Card Ace Diamonds, Card Ace Hearts]
+> [(TwoPair,[FullHouse])]
 
                     !!!!!!!!!!!!!!
 

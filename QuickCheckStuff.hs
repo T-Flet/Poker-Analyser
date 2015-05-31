@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.3 - 28/05/2015
+--          0.4 - 30-31/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -64,7 +64,7 @@ checkAllHtCsProp ocs cs =
 
 main = do
     putStrLn "\nDr_lord's Poker Analyser: HandType counting functions preliminary testing"
-    putStrLn "Meant for Isaac Jordan, 28/05/2015"
+    putStrLn "Meant for Isaac Jordan, 31/05/2015"
     checkInput
 
 checkInput = do
@@ -76,10 +76,10 @@ checkInput = do
                     putStrLn "\nThank you for testing. Please send me a print of your results, XD"
                     putStrLn "The important part usually is just the last 3 lines; it will be something like 'True because...' or 'Falsifiable after...'"
         "quick" -> do
-                    quickCheck checkAllHtCsProp
+                    quickCheckWith stdArgs { maxSuccess = 100000 } checkAllHtCsProp
                     checkInput
         "verbose" -> do
-                    verboseCheck checkAllHtCsProp
+                    verboseCheckWith stdArgs { maxSuccess = 100000 } checkAllHtCsProp
                     checkInput
         _ -> do
                 putStrLn "Unrecognised input"
