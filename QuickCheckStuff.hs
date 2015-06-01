@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.4 - 30-31/05/2015
+--          0.5 - 31-01/05-06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -76,10 +76,10 @@ checkInput = do
                     putStrLn "\nThank you for testing. Please send me a print of your results, XD"
                     putStrLn "The important part usually is just the last 3 lines; it will be something like 'True because...' or 'Falsifiable after...'"
         "quick" -> do
-                    quickCheckWith stdArgs { maxSuccess = 100000 } checkAllHtCsProp
+                    quickCheckWith stdArgs { maxSuccess = 10000 } checkAllHtCsProp
                     checkInput
         "verbose" -> do
-                    verboseCheckWith stdArgs { maxSuccess = 100000 } checkAllHtCsProp
+                    verboseCheckWith stdArgs { maxSuccess = 10000 } checkAllHtCsProp
                     checkInput
         _ -> do
                 putStrLn "Unrecognised input"

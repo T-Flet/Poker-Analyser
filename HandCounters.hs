@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.12 - 30-31/05/2015
+--          0.13 - 31-01/05-06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -167,10 +167,13 @@ countThreeOfAKind d ocs cs = countPossHands ThreeOfAKind aphs d ocs cs
 
 
 countTwoPair d ocs cs = countPossHands TwoPair aphs d ocs cs
-    where aphs = [ncs | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, let ncs = fromVS [v1] ss1 ++ fromVS [v2] ss2, noBetterHts ncs v1 v2 ss1 ss2]
-          noBetterHts ncs v1 v2 ss1 ss2 = noNPlets v1 v2 ss1 ss2 && noStraights cs [v1,v2] && noFlushes' ncs
+    where aphs
+                -- Any Three or Four OfAKinds present
+            | any ((>=3) . length) $ valueGroups cs = []
+            | otherwise = [ncs | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, let ncs = fromVS [v1] ss1 ++ fromVS [v2] ss2, noBetterHts ncs v1 v2 ss1 ss2]
+          noBetterHts ncs v1 v2 ss1 ss2 = noStraights cs [v1,v2] && noFlushes' ncs && noNPlets ncs [v1,v2]
             -- Implicit Three or Four OfAKinds
-          noNPlets v1 v2 ss1 ss2 = all (`notElem` cs) $ makeCs [v1,v1,v2,v2] (concat $ map (allSuits\\) [ss1,ss2])
+          noNPlets ncs vs = not $ any (`elem` cardsValues (cs\\ncs)) vs
             -- Implicit Flushes
           noFlushes' ncs = not . any ((>=5) . length) . suitGroups $ union cs ncs
 
@@ -180,8 +183,10 @@ countTwoPair d ocs cs = countPossHands TwoPair aphs d ocs cs
 
 countOnePair d ocs cs = countPossHands OnePair aphs d ocs cs
     where aphs
-            | null nPletsVgs = csvshs ++ ncsvshs
-            | otherwise      = []
+                -- Any Straight Present
+            | any (`subsetOf` csvs) straightValues = []
+            | null nPletsVgs                       = csvshs ++ ncsvshs
+            | otherwise                            = []
             -- If Card v s is in cs it can be discarded by noFlushes below, which is ok
           csvshs = [[Card v s] | v <- csvs, s <- allSuits, noFlushes cs [s]]
           ncsvshs = [fromVS [v] ss | v <- allValues \\ csvs, ss <- combinations 2 allSuits, noBetterHts cs v ss]

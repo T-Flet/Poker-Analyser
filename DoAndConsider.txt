@@ -54,11 +54,7 @@
 
 checkAllHtCs initialDeck [] cs
 
-JUST SOLVED [(ThreeOfAKind,[Straight,Flush,StraightFlush]),(OnePair,[Straight,Flush,StraightFlush])]
-
-
-let cs = [Card Ace Clubs, Card Ace Diamonds, Card Ace Hearts]
-> [(TwoPair,[FullHouse])]
+JUST SOLVED [(TwoPair,[FullHouse])] [(OnePair,[Straight])]
 
                     !!!!!!!!!!!!!!
 
