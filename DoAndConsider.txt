@@ -22,7 +22,23 @@
 
 ---- 1 - TO DO -----------------------------------------------------------------
 
+    MAKE A FUNCTION WHICH RETURNS THE TAIL OF [2,5,6,7] APPROPRIATE TO A PAIR OF
+    cs AND ocs
+
+    PARALLELISE STUFF
+        DETERMINE WHICH MODULE IS THE MOST PERTINENT IN EACH CASE:
+            Control.Parallel
+            Control.Parallel.Strategies
+            Control.Deepseq
+            Control.Deepseq.TH
+
+
     DO SOMETHING WITH THE Deck TYPE; USE IT IN THE count FUNCTIONS
+    IF IT IS NOT USED, REMOVE IT ALTOGETHER
+
+    WHEN IMPLEMENTING THE count FUNCTIONS, MAKE USE OF THE leftToDraw PARAMETER;
+    IN FACT, PERHAPS MAKE IT A LIST OF INTEGERS, SO THAT THE THINGS DO NOT ACTUALLY
+    NEED TO BE EVALUATED IN PARALLEL, JUST FILTERED AT THE END
 
     IMPLEMENT ALL CHECKS FOR NON ALLOWED ACTIONS AND CARDS IN THE SHELL, ESPECIALLY
     HAVING THE SAME CARD TWICE, WHICH BREAKS MOST count FUNCTIONS
@@ -50,13 +66,6 @@
             - CHECK WITH RANDOMLY GENERATED HANDS ON checkBetter
             - USE QuickCheck!!!!!!!!!!!!!!!!!!!!
 
-                    ANALYSE THIS!!!!!!!!!!!!!! (GOT FROM QUICKCHECK)
-
-checkAllHtCs initialDeck [] cs
-
-JUST SOLVED [(TwoPair,[FullHouse])] [(OnePair,[Straight])]
-
-                    !!!!!!!!!!!!!!
 
 
             BE AWARE, WHEN LATER DECIDING ON HOW TO USE THE PROBABILITIES (SINGLE

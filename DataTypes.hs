@@ -31,6 +31,8 @@ import Data.Char (toLower)
 import Data.Function (on)
 import qualified Data.Map as M (lookup, fromList)
 
+import Control.Parallel.Strategies
+
 
 
 ---- 1 - CARD RELATED DATA TYPES -----------------------------------------------
@@ -143,6 +145,7 @@ groupCardsBy suitOrValue = groupBy ((==) `on` suitOrValue) . reverse
 data HandType = HighCard | OnePair | TwoPair | ThreeOfAKind | Straight | Flush
             | FullHouse | FourOfAKind | StraightFlush | RoyalFlush
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
+instance NFData HandType
 
 
 data HandTypesField = HV Value | HS Suit | HL [Value] | HT (Suit,Value)
@@ -154,8 +157,9 @@ instance Show HandTypesField where
    show (HT x) = show x
 
 
-data HandTypeCount = HandTypeCount {cType :: HandType, completers :: [[Card]], probs :: [(Int,Float)]}
+data HandTypeCount = HandTypeCount {cType :: HandType, completers :: [[Card]], targetCsNum :: Int, probs :: [(Int,Float)]}
                 deriving (Eq, Show)
+instance NFData HandTypeCount
 
 
 data Hand = Hand {hType :: HandType, hTField :: HandTypesField, rank :: Int, cards :: [Card]}

@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.5 - 31-01/05-06/2015
+--          0.6 - 06/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -53,33 +53,43 @@ checkAllHtCsProp ocs cs =
         -- Lists of unique elements
     nub ocs == ocs && nub cs == cs ==>
         null ress
-    where ress = checkAllHtCs initialDeck ocs cs
+    where ress = checkAllHtCs [2,5,6,7] initialDeck ocs cs
+
+    -- Parallel version
+checkAllHtCsParProp ocs cs =
+    length ocs <= 2 ==>
+    length cs  <= 7 ==>
+    length ocs + length cs <= 7 ==>
+        -- Lists of unique elements
+    nub ocs == ocs && nub cs == cs ==>
+        null ress
+    where ress = checkAllHtCsPar [2,5,6,7] initialDeck ocs cs
 
 
 
 ---- 2 - COMPILED TESTING SHELL STUFF ------------------------------------------
 
-    -- Compile with: ghc -o PokerTestingIsaac -O QuickCheckStuff
+    -- Compile with: ghc -o PokerTesting -O QuickCheckStuff
+    -- Or, Multi Core: ghc -o PokerTestingNCores -O QuickCheckStuff -threaded +RTS -N
     -- Then delete all the intermediate files in the repo
 
 main = do
-    putStrLn "\nDr_lord's Poker Analyser: HandType counting functions preliminary testing"
-    putStrLn "Meant for Isaac Jordan, 31/05/2015"
+    putStrLn "\nDr_lord's Poker Analyser: HandType counting functions testing"
+    putStrLn "Meant for Isaac Jordan, and Ben Jackson 06/06/2015"
     checkInput
 
 checkInput = do
-    putStrLn "\nPlease enter either 'quit', 'quick' or 'verbose'"
-    putStrLn "(Use 'verbose' if you feel like looking at what the tests are on and how they are going):"
+    putStrLn "\nPlease enter either 'quit', 'normal' or 'parallel'"
     cmd <- getLine
     case cmd of
         "quit" -> do
                     putStrLn "\nThank you for testing. Please send me a print of your results, XD"
                     putStrLn "The important part usually is just the last 3 lines; it will be something like 'True because...' or 'Falsifiable after...'"
-        "quick" -> do
+        "normal" -> do
                     quickCheckWith stdArgs { maxSuccess = 10000 } checkAllHtCsProp
                     checkInput
-        "verbose" -> do
-                    verboseCheckWith stdArgs { maxSuccess = 10000 } checkAllHtCsProp
+        "parallel" -> do
+                    quickCheckWith stdArgs { maxSuccess = 10000 } checkAllHtCsParProp
                     checkInput
         _ -> do
                 putStrLn "Unrecognised input"
