@@ -186,11 +186,15 @@ toT (HT x) = x
 anyNeeded :: HandTypeCount -> [Card]
 anyNeeded = nub . concat . completers
 
-
     -- Return the number of possible HandType Hands in the HandTypeCount
     -- Note: this is more efficient than taking the length of completers
 count :: HandTypeCount -> Int
 count = sum . map fst . probs
+
+    -- Return the total probability of the HandTypeCount
+totHtProb :: HandTypeCount -> Float
+totHtProb = foldr weightedSum 0 . probs
+    where weightedSum (n,p) acc = acc + fromIntegral n * p
 
 
     -- List of "empty" probabilities in descending HandType

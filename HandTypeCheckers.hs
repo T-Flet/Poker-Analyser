@@ -173,7 +173,7 @@ isNplet n cs = isLenType n value $ valueDescGroups cs
 
 
     -- Check whether some cards constitute two N-plets (N=3 and 2 (or 2 and 3) => FullHouse, ...)
-    -- and return their values and the 5 constituting cards
+    -- and return their values and the constituting cards
 is2Nplet :: Int -> Int -> [Card] -> Maybe ([Value],[Card])
 is2Nplet n m cs
     | length gs >= 2 && length xg >= a && length yg >= b = if n == m
