@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.15 - 06-07/06/2015
+--          0.16 - 07-08/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -134,30 +134,29 @@ countFlush tcns d ocs cs = countPossHands Flush aphs tcns d ocs cs
 
 
 countStraight tcns d ocs cs = countPossHands Straight aphs tcns d ocs cs
-    where aphs = case isStraight cs of
-            Just (_,strCs) -> eqOrBetter (value $ last strCs) phs
-            _           -> phs
-          eqOrBetter v = filter (all ((>=v) . value))
-          phs = filter (\h-> not $ any (`subsetOf` h) npcs) phs'
+    where aphs
+                -- Any Straight which is not a StraightFlush present
+            | straightButNotFlush = []:phs
+            | otherwise           = phs
+          straightButNotFlush = not (null strVss) && not sameSuits
+            where strVss = filter (`subsetOf` csvs) straightValues
+                  sameSuits = any (\s-> any (sameSuit s) strVss) allSuits
+                  sameSuit s vs = (fromSV [s] vs) `subsetOf` cs
+
+          phs = filter (\h-> not $ any (`subsetOf` h) npcss) phs'
             -- Remove all indirect StraightFlushes: when a Straight
             -- is acheived, but some adjacent cards create a StraightFlush)
-          npcs = nub . concat $ map strFluCs cs
-          strFluCs c = map (fromSV [suit c]) . strFluVs $ value c
-          strFluVs v = map (delete v) $ filter (v `elem`) straightValues -- Used to be apvs instead of straightValues
+          npcss = map (\\cs) . nub . concat $ map strFluCs cs
+          strFluCs (Card v s) = map (fromSV [s]) $ strFluVs v
+          strFluVs v = map (delete v) $ filter (v `elem`) straightValues
 
-
-
-
-          -- TEMPORARY BEFORE ADDING ANOTHER LAYER IN HERE!!!!!!!!!!
-          phs' = concat $ map (zipWith (++) <$> repeat . concat . fst <*> snd) phsg
-
-          phsg = [(cscs, ncss vs) | (vs,cscs) <- apvsAndCsInCsToUse]
+            -- The cards in cs are already not present in these phs'
+          phs' = concat [ncss . (\\csvs) $ head tsvs | tsvs <- init $ tails straightValues, noBetterStraight tsvs]
+          noBetterStraight (svs:svss) = not $ any (`subsetOf` pBetterSVs) svss
+            where pBetterSVs = csvs ++ (svs\\csvs)
           ncss vs = [makeCs vs ss | ss <- apsss !! length vs, noImplicitFlush ss]
           noImplicitFlush = all ((<5) . length) . group . sort . (csss++)
           csss = map suit cs
-
-          apvsAndCsInCsToUse = map ((,) <$> (\\csvs) <*> csInCsVgs) straightValues
-          csInCsVgs vs = valueGroups $ filter ((`elem` vs) . value) cs
           csvs = cardsValues cs
 
             -- The following is to ensure that after their first evaluation all
@@ -196,6 +195,7 @@ countThreeOfAKind tcns d ocs cs = countPossHands ThreeOfAKind aphs tcns d ocs cs
 
 countTwoPair tcns d ocs cs = countPossHands TwoPair aphs tcns d ocs cs
     where aphs
+            | null cs   = []
                 -- Any Explicit Three or Four OfAKind present
             | any ((>=3) . length) $ valueGroups cs = []
             | otherwise = case best2Nplets of
@@ -220,23 +220,26 @@ countTwoPair tcns d ocs cs = countPossHands TwoPair aphs tcns d ocs cs
 countOnePair tcns d ocs cs = countPossHands OnePair aphs tcns d ocs cs
     where aphs
                 -- Any Straight Present
-            | any (`subsetOf` csvs) straightValues = []
-            | null nPletsVgs                       = csvshs ++ ncsvshs
-            | pairCs@[c1,c2] <- head vdgs          = [pairCs]
-            | otherwise                            = []
-          csvshs = [[Card v s] | v <- csvs, s <- allSuits, noFlushes cs [s]]
+            | any (`subsetOf` csvs) straightValues          = []
+            | null nPletsVgs                                = csvshs ++ ncsvshs
+            | length (head bNPls) == 2 && length bNPls == 1 = bNPls
+            | otherwise                                     = []
+          csvshs = [[Card v s] | v <- csvs, s <- pss v, noFlushes cs [s]]
+          pss v = (\\) allSuits $ map suit $ filter ((==v) . value) cs
           ncsvshs = [fromVS [v] ss | v <- allValues \\ csvs, ss <- combinations 2 allSuits, noBetterHts cs v ss]
 
           noBetterHts cs v ss = noStraights cs [v] && noFlushes cs ss
 
-          nPletsVgs = filter ((>1) . length) vdgs
-          vdgs = valueDescGroups cs
+            -- Best NPlets
+          bNPls = head $ groupBy ((==) `on` length) nPletsVgs
+          nPletsVgs = filter ((>1) . length) $ valueDescGroups cs
           csvs = cardsValues cs
 
 
 countHighCard tcns d ocs cs = countPossHands HighCard aphs tcns d ocs cs
     where aphs = group apcs
           apcs
+            | null cs                              = []
                 -- Any Straight Present
             | any (`subsetOf` csvs) stpvs          = []
                 -- Any Flush present
@@ -269,13 +272,11 @@ countHighCard tcns d ocs cs = countPossHands HighCard aphs tcns d ocs cs
 countPossHands :: HandType -> [[Card]] -> [Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount]
 countPossHands ht allPossHands tcns d outCs cs = map finalCount tcns'
     where tcns' = apprTcns tcns usedCsNum
-          finalCount tcn
-            | csLeft > 0 = HandTypeCount ht possHands tcn countTuples
-            | otherwise  = HandTypeCount ht []  tcn []
-                where csLeft = tcn - usedCsNum
-                      countTuples = map (\l-> (length l, head l)) $ group hProbs
-                      hProbs = map (handProb csLeft d) possHands
-                      possHands = sortBy ascLength $ filter ((<= csLeft) . length) neededHands
+          finalCount tcn = HandTypeCount ht possHands tcn countTuples
+            where csLeft = tcn - usedCsNum
+                  countTuples = map ((,) <$> length <*> head) $ group hProbs
+                  hProbs = map (handProb csLeft d) possHands
+                  possHands = sortBy ascLength $ filter ((<= csLeft) . length) neededHands
           neededHands = map (\\cs) notOcsHands
           notOcsHands = filter (not . any (`elem` outCs)) allPossHands
           usedCsNum = length outCs + length cs
@@ -329,6 +330,21 @@ cardsValues :: [Card] -> [Value]
 cardsValues cs = nub $ map value cs
 
 
+    -- Map each HandType to its counter function
+getHtcFunc :: HandType -> ([Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount])
+getHtcFunc ht = case ht of
+    RoyalFlush      -> countRoyalFlush
+    StraightFlush   -> countStraightFlush
+    FourOfAKind     -> countFourOfAKind
+    FullHouse       -> countFullHouse
+    Flush           -> countFlush
+    Straight        -> countStraight
+    ThreeOfAKind    -> countThreeOfAKind
+    TwoPair         -> countTwoPair
+    OnePair         -> countOnePair
+    HighCard        -> countHighCard
+
+
 
 ---- 3 - TESTING FUNCTIONS -----------------------------------------------------
 
@@ -344,21 +360,6 @@ checkAllHtCs tcns d ocs cs = filter (not . null . snd) . map (notNulls . bad . g
 checkAllHtCsPar :: [Int] -> Deck -> [Card] -> [Card] -> [(HandType, [[HandType]])]
 checkAllHtCsPar tcns d ocs cs = list `using` parList rdeepseq
     where list = checkAllHtCs tcns d ocs cs
-
-
-    -- Map each HandType to its counter function
-getHtcFunc :: HandType -> ([Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount])
-getHtcFunc ht = case ht of
-    RoyalFlush      -> countRoyalFlush
-    StraightFlush   -> countStraightFlush
-    FourOfAKind     -> countFourOfAKind
-    FullHouse       -> countFullHouse
-    Flush           -> countFlush
-    Straight        -> countStraight
-    ThreeOfAKind    -> countThreeOfAKind
-    TwoPair         -> countTwoPair
-    OnePair         -> countOnePair
-    HighCard        -> countHighCard
 
 
     -- Return all the completers which yield different HandTypes than the required one

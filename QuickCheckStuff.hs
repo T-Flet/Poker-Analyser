@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.6 - 06/06/2015
+--          0.7 - 07-08/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -46,24 +46,28 @@ instance Arbitrary Card where
 
 -- Properties --
 
-checkAllHtCsProp ocs cs =
+    -- Reasonable conditions on ocs and cs
+propConds prop ocs cs =
     length ocs <= 2 ==>
     length cs  <= 7 ==>
     length ocs + length cs <= 7 ==>
         -- Lists of unique elements
     nub ocs == ocs && nub cs == cs ==>
-        null ress
-    where ress = checkAllHtCs [2,5,6,7] initialDeck ocs cs
+        prop ocs cs
 
+
+checkAllHtCsProp ocs cs = propConds prop ocs cs
+    where prop ocs cs = null $ ress ocs cs
+          ress = checkAllHtCs [2,5,6,7] initialDeck
     -- Parallel version
-checkAllHtCsParProp ocs cs =
-    length ocs <= 2 ==>
-    length cs  <= 7 ==>
-    length ocs + length cs <= 7 ==>
-        -- Lists of unique elements
-    nub ocs == ocs && nub cs == cs ==>
-        null ress
-    where ress = checkAllHtCsPar [2,5,6,7] initialDeck ocs cs
+checkAllHtCsParProp ocs cs = propConds prop ocs cs
+    where prop ocs cs = null $ ress ocs cs
+          ress = checkAllHtCsPar [2,5,6,7] initialDeck
+
+    -- Single Ht property check
+checkSingleHt ht ocs cs = propConds prop ocs cs
+    where prop ocs cs = all null $ ress ocs cs
+          ress = filterBad ht [2,5,6,7] initialDeck
 
 
 

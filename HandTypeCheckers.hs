@@ -199,6 +199,7 @@ is2Nplet n m cs
     -- Note: it seems like a weird task, but it is common to many check functions
 isLenType :: Int -> (Card -> a) -> [[Card]] -> Maybe (a,[Card])
 isLenType n suitOrValue css
+    | null css        = Nothing
     | length hcs >= n = Just (suitOrValue $ head hcs, take 5 $ concat css)
     | otherwise       = Nothing
         where hcs = head css
