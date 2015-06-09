@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.16 - 07-08/06/2015
+--          0.17 - 08-09/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -88,8 +88,7 @@ countRoyalFlush = countPossHands RoyalFlush aphs
 
 
 countStraightFlush tcns d ocs cs = countPossHands StraightFlush aphs tcns d ocs cs
-    where aphs = filter ((`notElem` cs) . succ . last) phs
-          phs = concat $ map (fromSVG allSuits) apvs
+    where aphs = concat $ map (fromSVG allSuits) apvs
             -- Remove the Straights which, if present, are overshadowed by another
             -- greater by one (a Card of Value just above them is in cs)
             -- Note: no risk of error on succ because only 9 taken below
@@ -104,19 +103,24 @@ countFourOfAKind = countPossHands FourOfAKind aphs
 
 
 countFullHouse tcns d ocs cs = countPossHands FullHouse aphs tcns d ocs cs
-    where aphs = [makeCs [v3,v3,v3] ss3 ++ makeCs [v2,v2] ss2 | (ss3,ss2) <- apsss, (v3,v2) <- apvs, nF v3 ss3 v2 ss2]
+    where aphs = case filter ((>1) . length) $ valueDescGroups cs of
+            (vcs1@[c,d,e]:vcs2:vcss) -> (:) (vcs1++vcs2) . getAphs $ justBetter vcs1 vcs2
+            _ -> getAphs apvs'
+          getAphs apvs = [makeCs [v3,v3,v3,v2,v2] (ss3++ss2) | (ss3,ss2) <- apsss, (v3,v2) <- apvs, nF v3 ss3 v2 ss2]
+          justBetter vcs1 vcs2 = dropWhile (<= (value $ head vcs1, value $ head vcs2)) apvs'
             -- Ensuring v3 /= v2 prevents FourOfAKinds
-          apvs = [(v3,v2) | v3 <- allValues, v2 <- allValues, v3 /= v2]
+          apvs' = [(v3,v2) | v3 <- allValues, v2 <- allValues, v3 /= v2]
           apsss = [(ss3,ss2) | ss3 <- combinations 3 allSuits, ss2 <- combinations 2 allSuits]
-          nF v3 ss3 v2 ss2 = noFourOfAKinds3 v3 ss3 && noFourOfAKinds2 v2 ss2
-          noFourOfAKinds3 v ss = Card v (head (allSuits \\ ss)) `notElem` cs
-            -- This one has a not-all-elem instead of an intuitive any-notElem
-            -- because if there are 2 ThreeOfAKinds it is still a FullHouse
-          noFourOfAKinds2 v ss = not . all (`elem` cs) $ makeCs (repeat v) (allSuits \\ ss)
+          nF v3 ss3 v2 ss2 = noFourOfAKinds v3 ss3 && noFourOfAKinds v2 ss2
+          noFourOfAKinds v ss = not . any (`elem` cs) $ makeCs (repeat v) (allSuits \\ ss)
 
 
 countFlush tcns d ocs cs = countPossHands Flush aphs tcns d ocs cs
-    where aphs = [fromSV [s] vs | vs <- apvs, s <- allSuits]
+    where aphs = case filter ((>=5) . length) $ suitGroups cs of
+            [] -> [fromSV [s] vs | vs <- apvs, s <- allSuits]
+            fl -> [fromSV [s] vs | vs <- filter better apvs, let s = suit . head $ head fl]
+                where better = all (>= (minimum . map value $ head fl))
+
             -- Remove all FullHouses and FourOfAKinds
           apvs = filter ((>2) . length . group . sort) pvs
             -- Note that each combination below is sorted by ascending Value
@@ -124,7 +128,7 @@ countFlush tcns d ocs cs = countPossHands Flush aphs tcns d ocs cs
           npvs = implStrVs ++ explStrVs
             -- Implicit Straight Values (formed with the addition of the considered Cards)
           implStrVs = concat $ map getVs npCompletersVs
-          getVs (origVs,vs) = map (\comVs-> sort (vs ++ comVs)) $ combinations (5 - length vs) (allValues \\ origVs)
+          getVs (origVs,vs) = map (\comVs-> sort (vs ++ comVs)) . combinations (5 - length vs) $ allValues \\ origVs
           npCompletersVs = concat $ map getNpComplVs explStrVs
           getNpComplVs origVs = nub $ map (\vs-> (origVs, origVs \\ vs)) csvsCombs
           csvsCombs = concat $ map (flip combinations csvs) [1..length csvs]
