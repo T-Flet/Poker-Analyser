@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.19 - 12/05/2015
+--          1.0 - 09/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -29,7 +29,7 @@ import GeneralFunctions (descLength)
 import Data.List (sort, sortBy, groupBy, splitAt, intersect, union, (\\), nub)
 import Data.Char (toLower)
 import Data.Function (on)
-import qualified Data.Map as M (lookup, fromList)
+import Control.Applicative ((<$>), (<*>))
 
 import Control.Parallel.Strategies
 
@@ -61,6 +61,8 @@ instance Enum Card where
 
 
 --- Functions ---
+
+-- Card Functions --
 
     -- Lists of all Cards, Values and Suits
 allCards = enumFrom $ Card Two Spades
@@ -173,12 +175,20 @@ data Prob = Prob {pKind :: HandType, chance :: Float, need :: [Either Value Suit
 
 --- Functions ---
 
-    -- Value Extractors
+-- HandType Functions --
+
+    -- Ascending list of all HandTypes
+allHandTypes = enumFrom HighCard
+
+
+    -- HandTypesFields Value Extractors
 toV (HV x) = x
 toS (HS x) = x
 toL (HL x) = x
 toT (HT x) = x
 
+
+-- HandTypeCount Functions --
 
     -- Return the list of cards which would, at the present stage, by themselves,
     -- get the player closer the HandType in question
@@ -186,10 +196,20 @@ toT (HT x) = x
 anyNeeded :: HandTypeCount -> [Card]
 anyNeeded = nub . concat . completers
 
+
     -- Return the number of possible HandType Hands in the HandTypeCount
     -- Note: this is more efficient than taking the length of completers
 count :: HandTypeCount -> Int
 count = sum . map fst . probs
+
+
+    -- Return the total probabilities of a list of HandTypeCounts
+    -- Note: the intended use is: (map simpletTotProbs) on one of the Complete
+    -- HandType Instances Calculator functions (first section of HandTypeCounters)
+    -- Note: use lookup function to pick out single values
+simpleTotProbs :: [HandTypeCount] -> [(HandType,Float)]
+simpleTotProbs = map ((,) <$> cType <*> totHtProb)
+
 
     -- Return the total probability of the HandTypeCount
 totHtProb :: HandTypeCount -> Float
@@ -197,7 +217,9 @@ totHtProb = foldr weightedSum 0 . probs
     where weightedSum (n,p) acc = acc + fromIntegral n * p
 
 
-    -- List of "empty" probabilities in descending HandType
+-- Prob Functions --
+
+    -- List of "empty" Probabilities in descending HandType
 noProbs :: [Prob]
 noProbs = map (\hT-> Prob hT 0 []) . reverse . enumFrom $ (minBound :: HandType)
 
@@ -213,7 +235,7 @@ data Action = GameStart | SetPlayers Int | SetUser Int | SetBalance Int | SetDea
 
 
 data Player = Player {num :: Int, balance :: Int, onPlate :: Int, status :: Action,
-                        hisCards :: [Card], hisHand :: Hand}
+                        plCards :: [Card], plHand :: Hand}
                 deriving (Eq, Ord)
     -- EVENTUALLY INTRODUCE STATISTICS TRACKING IN HERE
 instance Show Player where
@@ -223,9 +245,9 @@ instance Show Player where
                         ", Bet: ",     show $ onPlate pl,
                         ", Status: ",  show $ status pl,
                         "\n\t",
-                        "\tCards: ",   show $ hisCards pl,
+                        "\tCards: ",   show $ plCards pl,
                         "\n\t",
-                        "\tHand: ",    show $ hisHand pl]
+                        "\tHand: ",    show $ plHand pl]
 
 
 data PlayerField = PI Int | PA Action | PC [Card] | PH Hand
@@ -237,7 +259,7 @@ data Deck = Deck {cardsIn :: Int, valuesIn :: [Int], suitsIn :: [Int]}
                 deriving (Eq, Show)
 
 
-data Frame = Frame {action :: Action, playersNum :: Int, userNum :: Int,
+data Frame = Frame {action :: Action, playersNum :: Int, userId :: Int,
                     dealer :: Int, deck :: Deck, table :: [Card],
                     plate :: Int, players :: [Player]}
                 deriving (Eq)
@@ -247,7 +269,7 @@ instance Show Frame where
         where funcs :: [(String,(Frame -> String))]
               funcs = [ ("Current action: ",    show . action),
                         ("Players Number: ",    show . playersNum),
-                        ("User Number: ",       show . userNum),
+                        ("User Number: ",       show . userId),
                         ("Dealer ID: ",         show . dealer),
                         ("Deck: ",              show . deck),
                         ("Cards on table: ",    show . table),
@@ -265,6 +287,8 @@ type State = [Frame]
 
 --- Functions ---
 
+-- Player Functions --
+
     -- Player Value Extractors
 fromPI (PI x) = x
 fromPA (PA x) = x
@@ -272,66 +296,32 @@ fromPC (PC x) = x
 fromPH (PH x) = x
 
 
-    -- Field Value Extractors
-fromFA (FA x) = x
-fromFI (FI x) = x
-fromFD (FD x) = x
-fromFC (FC x) = x
-fromFP (FP x) = x
-
-
     -- Starting Player
 initialPlayer :: Int -> Player
 initialPlayer nu = Player nu 0 0 Idle [] (Hand HighCard (HV Two) 0 [])
-
-
-    -- Starting Deck
-initialDeck :: Deck
-initialDeck = Deck 52 (replicate 13 4) (replicate 4 13)
-
-
-    -- The User's Cards
-myCards :: Frame -> [Card]
-myCards f = hisCards . head . filter ((== userNum f) . num) $ players f
-
-
-    -- Starting State
-initialState :: State
-initialState = [Frame GameStart 0 0 0 initialDeck [] 0 []]
 
 
     -- Generate a Player by providing only the fields which change
     -- with respect to the previous one
 newPlayer :: Player -> [(String, PlayerField)] -> Player
 newPlayer pl fieldList = (Player no ba op st cs hh)
-    where no = newField num      fromPI "num"
-          ba = newField balance  fromPI "balance"
-          op = newField onPlate  fromPI "onPlate"
-          st = newField status   fromPA "status"
-          cs = newField hisCards fromPC "hisCards"
-          hh = newField hisHand  fromPH "hisHand"
+    where no = newField num     fromPI "num"
+          ba = newField balance fromPI "balance"
+          op = newField onPlate fromPI "onPlate"
+          st = newField status  fromPA "status"
+          cs = newField plCards fromPC "plCards"
+          hh = newField plHand  fromPH "plHand"
 
           newField :: (Player -> a) -> (PlayerField -> a) -> String -> a
           newField field extractor key =
-                maybe (field pl) extractor . M.lookup key $ M.fromList fieldList
+                maybe (field pl) extractor $ lookup key fieldList
 
 
-    -- Add a new Frame to the State by providing only the fields which change
-    -- with respect to the previous one
-addFrame :: State -> [(String, FrameField)] -> State
-addFrame s@(f:_) fieldList = (Frame act plN usN dea dCN tab plt pls):s
-    where act = newField action      fromFA "action"
-          plN = newField playersNum  fromFI "playersNum"
-          usN = newField userNum     fromFI "userNum"
-          dea = newField dealer      fromFI "dealer"
-          dCN = newField deck        fromFD "deck"
-          tab = newField table       fromFC "table"
-          plt = newField plate       fromFI "plate"
-          pls = newField players     fromFP "players"
+-- Deck Functions --
 
-          newField :: (Frame -> a) -> (FrameField -> a) -> String -> a
-          newField field extractor key =
-                maybe (field f) extractor . M.lookup key $ M.fromList fieldList
+    -- Starting Deck
+initialDeck :: Deck
+initialDeck = Deck 52 (replicate 13 4) (replicate 4 13)
 
 
     -- Generate a new Deck by providing the cards which have been taken out from
@@ -346,15 +336,42 @@ newDeck d cs = foldr takeOut d cs
                   (bss,ass) = splitAt (1 + fromEnum s) ssi
 
 
+-- Frame Functions --
+
+    -- Field Value Extractors
+fromFA (FA x) = x
+fromFI (FI x) = x
+fromFD (FD x) = x
+fromFC (FC x) = x
+fromFP (FP x) = x
 
 
+    -- The User's Cards
+myCards :: Frame -> [Card]
+myCards f = plCards . head . filter ((== userId f) . num) $ players f
 
 
+    -- Starting State
+initialState :: State
+initialState = [Frame GameStart 0 0 0 initialDeck [] 0 []]
 
 
+    -- Add a new Frame to the State by providing only the fields which change
+    -- with respect to the previous one
+addFrame :: State -> [(String, FrameField)] -> State
+addFrame s@(f:_) fieldList = (Frame act plN usN dea dCN tab plt pls):s
+    where act = newField action     fromFA "action"
+          plN = newField playersNum fromFI "playersNum"
+          usN = newField userId     fromFI "userId"
+          dea = newField dealer     fromFI "dealer"
+          dCN = newField deck       fromFD "deck"
+          tab = newField table      fromFC "table"
+          plt = newField plate      fromFI "plate"
+          pls = newField players    fromFP "players"
 
-
-
+          newField :: (Frame -> a) -> (FrameField -> a) -> String -> a
+          newField field extractor key =
+                maybe (field f) extractor $ lookup key fieldList
 
 
 

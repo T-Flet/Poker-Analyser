@@ -197,7 +197,7 @@ totHtsCounts = [
     -- the highest one
 allHandTypesIn :: [Card] -> [(HandType,Int)]
 allHandTypesIn cs = identifyHts . foldl countHandTypes zeroes $ handCombinations cs
-    where identifyHts = zip (enumFrom HighCard)
+    where identifyHts = zip allHandTypes
           zeroes = replicate 10 0
           countHandTypes counts hand = concat [
                     take itsHtNum counts,

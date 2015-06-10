@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.17 - 08-09/06/2015
+--          1.0 - 09-10/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -13,9 +13,10 @@
 --
 --   Sections:
 --       0 - Imports
---       1 - HandType Instances Counters
---       2 - General Functions
---       3 - Testing Functions
+--       1 - Complete HandType Instances Counters
+--       2 - Single HandType Instances Counters
+--       3 - General Functions
+--       4 - Testing Functions
 --
 
 
@@ -25,9 +26,10 @@
 module HandCounters where
 
 import DataTypes
-import GeneralFunctions (choose, combinations, ascLength, subsetOf)
+import GeneralFunctions (choose, combinations, ascLength, subsetOf, listUnZip)
 
 import Data.List (tails, group, groupBy, sort, sortBy, delete, nub, partition, union, (\\))
+import Data.Char (toLower)
 import qualified Data.Sequence as Seq (replicateM)
 import Data.Foldable (toList)
 import Data.Function (on)
@@ -41,7 +43,55 @@ import HandTypeCheckers
 
 
 
----- 1 - HANDTYPE INSTANCES CALCULATORS ----------------------------------------
+---- 1 - COMPLETE HANDTYPE INSTANCES CALCULATORS -------------------------------
+
+    -- Note: use (map simpleTotProbs) on one of the below functions to get nice
+    -- Data.Maps of total probabilities per HandType
+
+    -- Return, in the reasonable order (see below), only the counts of HandTypes
+    -- better or equal to the Maybe given one or to the one constituted by cs
+countBetterHandTypes :: Maybe HandType -> [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
+countBetterHandTypes mHt tcns d ocs cs = countHandTypes hts tcns d ocs cs
+    where hts = enumFromThenTo RoyalFlush StraightFlush bht
+          bht = case mHt of
+            Just ht -> ht
+            Nothing -> hType $ bestHandType cs
+
+    -- Return all HandTypes' counts in the reasonable order (see below)
+countAllHandTypes :: [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
+countAllHandTypes = countHandTypes (reverse allHandTypes)
+
+    -- Apply the given HandTypes' Instances Calculators to the given cards, and
+    -- get the results in the reasonable order: sublists corresponding to each
+    -- tcns, containing all the HandTypes' counts (descending).
+    -- The order before the listUnzip is counts grouped by HandTypes first:
+    -- sublists corresponding to each HandType (descending), containing all the
+    -- tcns counts
+countHandTypes :: [HandType] -> [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
+countHandTypes hts tcns d ocs cs = listUnZip countsLists
+    where countsLists = map (\f-> f tcns' d ocs cs) countFunctions `using` parList rdeepseq
+          countFunctions = map getHtcFunc hts
+            -- Having this here avoids generating it for every single count
+          tcns' = apprTcns tcns $ length ocs + length cs
+
+
+    -- Map each HandType to its counter function
+getHtcFunc :: HandType -> ([Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount])
+getHtcFunc ht = case ht of
+    RoyalFlush    -> countRoyalFlush
+    StraightFlush -> countStraightFlush
+    FourOfAKind   -> countFourOfAKind
+    FullHouse     -> countFullHouse
+    Flush         -> countFlush
+    Straight      -> countStraight
+    ThreeOfAKind  -> countThreeOfAKind
+    TwoPair       -> countTwoPair
+    OnePair       -> countOnePair
+    HighCard      -> countHighCard
+
+
+
+---- 2 - SINGLE HANDTYPE INSTANCES CALCULATORS ---------------------------------
 
     -- Each of the following functions returns the list of HandTypeCounts of possible
     -- instances of a specific HandType which can be obtained by completing a
@@ -53,8 +103,8 @@ import HandTypeCheckers
     -- should not be considered (like the player's if working just on the table)
     -- and the cards in question.
 
-    -- Note: each function avoids counting instances of their HandType which also
-    -- qualify as a different one (be it higher or lower)
+    -- Note: each function avoids counting instances of their HandType which
+    -- also qualify as a different one (be it higher or lower)
     -- Also, if an instance of its HandType is already present, each function
     -- returns all the better or equal ones, excluding the ones which are worth
     -- the same but different (i.e. the present instane and all the strictly
@@ -62,25 +112,6 @@ import HandTypeCheckers
 
     -- Note: most of these functions break down with unreasonable input (like
     -- lists of identical cards, which are not possible)
-
-
-    -- Apply all HandTypes' Instances Calculators to the given cards
-countHandTypes :: [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
-countHandTypes tcns d ocs cs = foldl separate (replicate (length tcns') []) countsLists
-    where   -- This fold is a list based unZipN
-          separate acc counts = zipWith (++) acc $ group counts
-          countsLists = map (\f-> f tcns' d ocs cs) countFunctions `using` parList rdeepseq
-          countFunctions = [countRoyalFlush,
-                            countStraightFlush,
-                            countFourOfAKind,
-                            countFullHouse,
-                            countFlush,
-                            countStraight,
-                            countThreeOfAKind,
-                            countTwoPair,
-                            countOnePair,
-                            countHighCard]
-          tcns' = apprTcns tcns $ length ocs + length cs
 
 
 countRoyalFlush = countPossHands RoyalFlush aphs
@@ -270,7 +301,7 @@ countHighCard tcns d ocs cs = countPossHands HighCard aphs tcns d ocs cs
 
 
 
----- 2 - GENERAL FUNCTIONS -----------------------------------------------------
+---- 3 - GENERAL FUNCTIONS -----------------------------------------------------
 
     -- Possible Hands narrowing down process common to all count functions
 countPossHands :: HandType -> [[Card]] -> [Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount]
@@ -293,12 +324,12 @@ apprTcns tcns usedCsNum
     | null tcns = dropWhile (<usedCsNum) [2,5,6,7]
     | otherwise = tcns
     -- Same thing but given the current round stage
-stageTcns :: Action -> [Int]
-stageTcns stage = case stage of
-   RoundStart -> [2,5,6,7]
-   Flop  _    ->   [5,6,7]
-   Turn  _    ->     [6,7]
-   River _    ->       [7]
+stageTcns :: Char -> [Int]
+stageTcns stage = case toLower stage of
+   's' -> [2,5,6,7] -- RoundStart
+   'f' ->   [5,6,7] -- Flop
+   't' ->     [6,7] -- Turn
+   'r' ->       [7] -- River
 
 
     -- Return the probability of drawing the given Cards from the given Deck in
@@ -334,36 +365,30 @@ cardsValues :: [Card] -> [Value]
 cardsValues cs = nub $ map value cs
 
 
-    -- Map each HandType to its counter function
-getHtcFunc :: HandType -> ([Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount])
-getHtcFunc ht = case ht of
-    RoyalFlush      -> countRoyalFlush
-    StraightFlush   -> countStraightFlush
-    FourOfAKind     -> countFourOfAKind
-    FullHouse       -> countFullHouse
-    Flush           -> countFlush
-    Straight        -> countStraight
-    ThreeOfAKind    -> countThreeOfAKind
-    TwoPair         -> countTwoPair
-    OnePair         -> countOnePair
-    HighCard        -> countHighCard
+
+---- 4 - TESTING FUNCTIONS -----------------------------------------------------
+
+    -- Check (as described in checkHtCounts) only the appropriate HandTypes (eq
+    -- or better than what cs constitute)
+checkBetterHandTypes :: [Int] -> Deck -> [Card] -> [Card] -> [(HandType, [[HandType]])]
+checkBetterHandTypes tcns d ocs cs = checkHtCounts hts tcns d ocs cs
+    where hts = enumFromThenTo RoyalFlush StraightFlush . hType $ bestHandType cs
 
 
+    -- Check (as described in checkHtCounts) all the HandTypes
+checkAllHandTypes :: [Int] -> Deck -> [Card] -> [Card] -> [(HandType, [[HandType]])]
+checkAllHandTypes = checkHtCounts (reverse allHandTypes)
 
----- 3 - TESTING FUNCTIONS -----------------------------------------------------
 
-    -- Test whether any of the count functions yields a HandType which is not
-    -- its own. In particular, lookout for ones higher than it
-    -- Also, count the instances of each
-checkAllHtCs :: [Int] -> Deck -> [Card] -> [Card] -> [(HandType, [[HandType]])]
-checkAllHtCs tcns d ocs cs = filter (not . null . snd) . map (notNulls . bad . getChecks) . reverse $ enumFrom HighCard
-    where notNulls (ht,badChts) = (ht, filter (not . null) badChts)
+    -- Test whether any of the count functions of the given HandTypes yields a
+    -- HandType which is not its own. In particular, lookout for ones higher
+    -- than it. Also, count the instances of each
+checkHtCounts :: [HandType] -> [Int] -> Deck -> [Card] -> [Card] -> [(HandType, [[HandType]])]
+checkHtCounts hts tcns d ocs cs = list `using` parList rdeepseq
+    where list = filter (not . null . snd) $ map (notNulls . bad . getChecks) hts
+          notNulls (ht,badChts) = (ht, filter (not . null) badChts)
           bad (ht,chts) = (ht, map (nub . sort . filter (/= ht)) chts)
           getChecks ht = (ht, checkHtc ht tcns d ocs cs)
-    -- Parallel version
-checkAllHtCsPar :: [Int] -> Deck -> [Card] -> [Card] -> [(HandType, [[HandType]])]
-checkAllHtCsPar tcns d ocs cs = list `using` parList rdeepseq
-    where list = checkAllHtCs tcns d ocs cs
 
 
     -- Return all the completers which yield different HandTypes than the required one

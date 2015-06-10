@@ -22,6 +22,11 @@
 
 ---- 1 - TO DO -----------------------------------------------------------------
 
+    THINK ABOUT THE COMPLETERS WHICH ARE SUBSETS OF OTHER COMPLETERS (USUALLY
+    WHEN POSSIBLE BETTER VERSIONS OF AN ALREADY PRESENT INSTANCE EXIST (LIKE Flushes));
+    THEY CAN DRIVE THE totHtProb OVER 2, BUT IT MIGHT BE OK, SINCE THE NEXT STEP IS
+    TO GET RANKS FROM THE COMPLETERS
+
     PARALLELISE STUFF
         DETERMINE WHICH MODULE IS THE MOST PERTINENT IN EACH CASE:
             Control.Parallel (JUST par AND pseq)
@@ -31,8 +36,7 @@
     MAKE FUNCTIONS (OR IMPLEMENT IN THE ABSTRACTED PART OF THE count ONES) RANKING
     THE BEST AND WORST INSTANCES IN A count
 
-    MAKE A FUNCTION (USING totHtProb) WHICH TAKES THE RESULT OF countHandTypes
-    AND RETURNS A SINGLE PROBABILITY PER HandType PER TARGET CARDS NUMBER
+    MAKE USE OR CHANGE OR DELETE THE Prob DATA TYPE
 
     DO SOMETHING WITH THE Deck TYPE; USE IT IN THE count FUNCTIONS
     IF IT IS NOT USED, REMOVE IT ALTOGETHER BUT LEAVE THE # OF CARDS IN IT
@@ -42,17 +46,17 @@
     HAVING THE SAME CARD TWICE, WHICH BREAKS MOST count FUNCTIONS
 
 
-    FINAL FINAL CHECK: MAKE SURE count FUNCTIONS COUNT EXACTLY THE PREDICTED AMOUNT
-    OF INSTANCES FOR THE EMPTY LISTS CASE
-        THINK ABOUT THE COMPLETERS WHICH ARE SUBSETS OF OTHER COMPLETERS (USUALLY
-        WHEN POSSIBLE BETTER VERSIONS OF AN ALREADY PRESENT INSTANCE EXIST (LIKE Flushes));
-        THEY CAN DRIVE THE totHtProb OVER 2, BUT IT MIGHT BE OK, SINCE THE NEXT STEP IS
-        TO GET RANKS FROM THE COMPLETERS
 
+    count FUNCTIONS:
 
-    RETOUCH countHandTypes FUNCTION BY PERFORMING THE GENERAL is TESTS (OR EQUIVALENT Bool ONES)
-    TO DETERMINE WHICH count FUNCTIONS WOULD JUST RETURN [], THEREBY SAVING PRECIOUS TIME
+        RETOUCH countHandTypes FUNCTION BY PERFORMING THE GENERAL is TESTS (OR EQUIVALENT Bool ONES)
+        TO DETERMINE WHICH count FUNCTIONS WOULD JUST RETURN [], THEREBY SAVING PRECIOUS TIME
 
+        FINAL FINAL CHECK: MAKE SURE count FUNCTIONS COUNT EXACTLY THE PREDICTED AMOUNT
+        OF INSTANCES FOR THE EMPTY LISTS CASE
+
+        MAKE A SEPARATE PROPERTY QUICKCHECK FOR countBetterHandTypes, WHICH RETURNS ONLY
+        THE REALISTIC COUNTS, WHICH WILL MAKE THE TESTS MORE APPROPRIATE AND FASTER
 
 
 
@@ -92,6 +96,9 @@
 
 
 ---- 2 - TO CONSIDER -----------------------------------------------------------
+
+    STORING AND UPDATING ALL THE COUNTS AND PROBABILITIES FOR THE USER AND THE
+    OTHER PLAYERS IN EACH Frame
 
     REDOING ALL is FUNCTIONS IMITATING THE SHORTER AND MORE EFFICIENT VERSIONS
     CREATED AD HOC FOR MOST count FUNCTIONS
@@ -214,14 +221,6 @@
 let h = probsToHand (sort a) (reverse $ sort b)
 let prs = [Prob HighCard 1 [], Prob FullHouse 0.3 [Left Ace], Prob Straight 0.8 [Right Diamonds]]
 
-let Just a = sequence $ map toCard ["ks", "qh", "jd", "1c", "kh", "ks", "qd"]
-let Just b = sequence $ map toCard ["3h", "5c", "ks", "1s", "2d", "ah", "9d"]
-
-let pls = [Player 1 50 10 (Fold 1) [] (Hand HighCard (HV Two) 0 []), Player 2 300 30 (Bet 2 30) [] (Hand HighCard (HV Two) 0 []), Player 3 200 50 (Raise 3 50) [] (Hand HighCard (HV Two) 0 [])]
-let fr = Frame (Discard 3) 4 2 1 40 a 0 pls
-let fl = [("action", FA (Fold 2)), ("dealer", FI 3)]
-let ss = newFrame [fr] fl
-
 
 
 let Just a = sequence $ map toCard ["ks", "qh"]
@@ -230,13 +229,21 @@ countHighCard initialDeck b a
 
 
 
+let Just a = sequence $ map toCard ["ks", "qh", "jd", "1c", "kh", "ks", "qd"]
+let Just b = sequence $ map toCard ["3h", "5c", "ks", "1s", "2d", "ah", "9d"]
+
+let pls = [Player 1 50 10 (Fold 1) [] (Hand HighCard (HV Two) 0 []), Player 2 300 30 (Bet 2 30) [] (Hand HighCard (HV Two) 0 []), Player 3 200 50 (Raise 3 50) [] (Hand HighCard (HV Two) 0 [])]
+let fr = Frame (Discard 3) 4 2 1 initialDeck a 0 pls
+let fl = [("action", FA (Fold 2)), ("dealer", FI 3)]
+let ss = addFrame [fr] fl
+
 
 gameShell ss
 
 spn 5
 sun 1
 spb 500
-s0d
+s1d
 ci ks qh
 p2b 5
 p3b 10
@@ -244,9 +251,9 @@ p4f
 p5f
 p1b 10
 p2b 5
-cf jd ah 1c
-p2c jc kd
-p3c kh qd
+cf kh qs kd
+p2c jc jd
+p3c kc 5d
 
 fff
 re

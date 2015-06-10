@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.2 - 24-25/04/2015
+--          1.0 - 09-10/06/2015
 --
 --      Description:
 --          This package contains general functions which can be useful in many
@@ -67,6 +67,7 @@ descLength, ascLength :: [a] -> [a] -> Ordering
 descLength l1 l2 = (compare `on` length) l2 l1
 ascLength  l1 l2 = (compare `on` length) l1 l2
 
+
     -- Stricter version of groupBy in the sense that does not assume that the
     -- provided comparison function is an equivalence relation.
     -- Only transitivity is assumed here
@@ -79,6 +80,16 @@ groupBy' cmp (x:xs@(x':_))
     | cmp x x'   = (x:y):ys
     | otherwise  = [x]:r
         where r@(y:ys) = groupBy' cmp xs
+
+
+    -- UnZip of lists of lists of any-(but fixed throughout)-length
+    -- Eg: [[11,12,13,14],[21,22,23,24],[31,32,33,34]] ->
+    --                          [[11,21,31],[12,22,32],[13,23,33],[14,24,34]]
+    -- Notice: listUnZip . listUnZip == id
+listUnZip :: [[a]] -> [[a]]
+listUnZip []        = []
+listUnZip xss@(h:_) = foldl separate (replicate (length h) []) xss
+    where separate acc xs = zipWith (++) acc $ map (:[]) xs
 
 
 

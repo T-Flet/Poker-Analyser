@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.27 - 18-19/04/2015
+--          1.0 - 09-10/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -42,6 +42,10 @@ import Data.Function (on)
 
 ---- 1 - MAIN FUNCTIONS --------------------------------------------------------
 
+    -- Compile with: ghc -o PokerAnalyserShell -O Analyser
+    -- Or, Multi Core: ghc -o PokerAnalyserShellNCores -O Analyser -threaded +RTS -N
+    -- Then delete all the intermediate files in the repo
+
 main = do
     putStrLn "Poker Analyser Shell"
     putStrLn "(Write \"h\" for command help)"
@@ -52,6 +56,7 @@ main = do
     -- PERHAPS THIS CAN BE DONE WITH foldM WITH THE STATE AS THE ACCUMULATOR
 gameShell :: State -> IO ()
 gameShell state = do
+    putStr ">> "
     cmd <- getLine
     if cmd == "q"
         then do
@@ -138,11 +143,24 @@ shellCommand s cmd = case cmd of
 
         -- MAKE A COMMAND TO DISPLAY THE NUMBER OF ROUNDS (CALCULATE OR STORE IT)
     -- Analysis commands begin with a
-        -- Analyse the player's hand
-    "ah" ->
+        -- Analyse (My) the player's hand
+    "amh" ->
                 (s, "Your hand is a " ++ show ht ++ " of " ++ show htf)
                     where (Hand ht htf _ _) = bestHandType . concat $ map (\f-> f $ head s) [table, myCards]
+        -- Analyse (My) the player's possible hands up to the given stage
+    ('a':'m':'p':'h':'s':' ':stage:_) ->
+                (s, show . analysePossibleHands 'm' stage $ head s)
+        -- Analyse the Opponents' possible hands up to the given stage
+    ('a':'o':'p':'h':'s':' ':stage:_) ->
+                (s, show . analysePossibleHands 'o' stage $ head s)
+        -- Analyse (My) the player's probabilities of getting each HandType by the given stage
+    ('a':'m':'p':'r':'o':'b':'s':' ':stage:_) ->
+                (s, show . map simpleTotProbs . analysePossibleHands 'm' stage $ head s)
+        -- Analyse the Opponents' probabilities of getting each HandType by the given stage
+    ('a':'o':'p':'r':'o':'b':'s':' ':stage:_) ->
+                (s, show . map simpleTotProbs . analysePossibleHands 'o' stage $ head s)
 
+        -- Declare the round over
     "re" ->
                 roundEnd s
 
@@ -166,7 +184,7 @@ shellCommand s cmd = case cmd of
     -- Command help
 help :: String
 help = " \n\
-\   -- Setting commands start with s \n\
+\   -- Setting commands start with s (DO THESE ONES FIRST) \n\
 \   spn <Int>       Set players number \n\
 \   sun <Int>       Set user number \n\
 \   spb <Int>       Set players balance \n\
@@ -178,6 +196,8 @@ help = " \n\
 \   p<Int>r <Int>   Player x Raises by amount \n\
 \ \n\
 \   p<Int>c <value><suit>(x2)   Player x reveals his hand \n\
+\       -- Note: <value> and <suit> are the initial letter or number of the corresponding words, \n\
+\                       but the Char for 10 is 0 \n\
 \ \n\
 \   b               Back one action \n\
 \ \n\
@@ -186,20 +206,34 @@ help = " \n\
 \   cf <value><suit>(x3)    Flop \n\
 \   ct <value><suit>        Turn \n\
 \   cr <value><suit>        River \n\
+\       -- Note: <value> and <suit> are the initial letter or number of the corresponding words, \n\
+\                       but the Char for 10 is 0 \n\
 \ \n\
 \   -- Frame related commands begin with f \n\
-\   ff <field>  Show any field from current frame \n\
-\   fff         Show the full frame fields \n\
-\   fb          Show players' balances \n\
-\   fa          Number of actions or frames \n\
-\   fh          History of frame Actions \n\
+\   ff <field>   Show any field from current frame \n\
+\       -- Note: <field> is: deck, table, plate, players... \n\
+\   fff          Show the full frame fields \n\
+\   fb           Show players' balances \n\
+\   fa           Number of actions or frames \n\
+\   fh           History of frame Actions \n\
 \ \n\
 \   -- Analysis commands begin with a \n\
-\   ah          Analyse the player's hand \n\
+\   amh              Analyse (My) the player's hand \n\
+\   amphs <stage>    Analyse (My) the player's possible hands up to the given stage \n\
+\   aophs <stage>    Analyse the Opponents' possible hands up to the given stage \n\
+\   amprobs <stage>  Analyse (My) the player's probabilities of getting each HandType by the given stage \n\
+\   aoprobs <stage>  Analyse the Opponents' probabilities of getting each HandType by the given stage \n\
+\       -- Note: <stage>: capital letters in: roundStart, Flop, Turn, or River \n\
 \ \n\
-\   re          Round End \n\
+\   re   Round End \n\
 \ \n\
-\   h           This help string \n\
+\   h    This help string \n\
+\ \n\n \
+\ A typical game beginning could be the following: \n\
+\spn 5 \n\
+\sun 1 \n\
+\spb 500 \n\
+\s1d \n\
 \ "
 
     -- Show players' balances
@@ -224,7 +258,7 @@ setUserNum :: State -> Int -> (State,String)
 setUserNum s@(f:_) n = case find ((== n) . num) $ players f of
     Nothing -> (s, "Non-existent player")
     Just p  -> (ns, "User number set to " ++ show n)
-        where ns = addFrame s [("action", FA (SetUser n)), ("userNum", FI n)]
+        where ns = addFrame s [("action", FA (SetUser n)), ("userId", FI n)]
 
 
     -- Set the balance of all players
@@ -246,7 +280,7 @@ setDealer s@(f:_) x = case find ((== x) . num) $ players f of
 startHand :: State -> [Card] -> State
 startHand s@(f:_) ucs = addFrame s $ [("action", FA (StartHand ucs)), ("deck", FD nd)] ++ nUsrTabl
     where nd = newDeck (deck f) ucs
-          nUsrTabl = updatePlayerAndTable f (userNum f) ucs []
+          nUsrTabl = updatePlayerAndTable f (userId f) ucs []
 
 
     -- Add some cards to the table (Flop, Turn, River) and recalculate the user's Hand
@@ -254,7 +288,7 @@ addCards :: State -> ([Card] -> Action) -> [Card] -> State
 addCards s@(f:_) act tcs = addFrame s $ [("action", FA nAct), ("deck", FD nd)] ++ nUsrTabl
     where nd = newDeck (deck f) tcs
           nAct = act tcs
-          nUsrTabl = updatePlayerAndTable f (userNum f) [] tcs
+          nUsrTabl = updatePlayerAndTable f (userId f) [] tcs
 
 
     -- Player x Folds
@@ -265,7 +299,7 @@ plFolds s@(f:_) x = case find ((== x) . num) $ players f of
         where ns = addFrame s [("action", FA (Fold x)), ("players", FP nPls)]
               nPls = map plStatus (players f)
               plStatus pl
-                | num pl == x = Player x (balance pl) (onPlate pl) (Fold x) (hisCards pl) (hisHand pl)
+                | num pl == x = Player x (balance pl) (onPlate pl) (Fold x) (plCards pl) (plHand pl)
                 | otherwise   = pl
 
 
@@ -290,8 +324,8 @@ plBets s@(f:_) act x a = case find ((== x) . num) $ players f of
 
               plStatus pl = if num pl == x
                 then case nAct of
-                    Bet   _ _ -> Player x nBal nPlt nAct (hisCards pl) (hisHand pl)
-                    Raise _ _ -> Player x (nBal-pPPlt) (nPlt+pPPlt) nAct (hisCards pl) (hisHand pl)
+                    Bet   _ _ -> Player x nBal nPlt nAct (plCards pl) (plHand pl)
+                    Raise _ _ -> Player x (nBal-pPPlt) (nPlt+pPPlt) nAct (plCards pl) (plHand pl)
                 else pl
 
 
@@ -304,33 +338,43 @@ plRevealsHand s@(f:_) x sCs = case find ((== x) . num) $ players f of
         Just cs -> (addFrame s $ updatePlayerAndTable f x cs [], "Player " ++ show x ++ " reveals " ++ show cs)
 
 
+    -- Return the counts of HandTypes better than the user's or the table's (without
+    -- the user's Cards in this case) up to the given stage
+analysePossibleHands :: Char -> Char -> Frame -> [[HandTypeCount]]
+analysePossibleHands who stage f = countBetterHandTypes mHt (stageTcns stage) (deck f) ocs cs
+    where (mHt,ocs,cs) = case who of
+            'm' -> (Just . hType $ plHand usr, []         , table f ++ plCards usr)
+            'o' -> (Nothing                  , plCards usr, table f               )
+          Just usr = find ((== userId f) . num) $ players f
+
+
     -- Determine the round winners, clear all hands and table of cards and of
     -- fiches (giving them to the winners), and, depending on how the game is
     -- played, either put them back into the deck or not.
     -- Mention the player(s) in the lead
 roundEnd :: State -> (State,String)
 roundEnd s@(f:_)
-    | any (null . hisCards) inRoundPls = (s, "Some players still in game have not revealed their hand!")
-    | otherwise                        = (ns, nsStr)
-    where ns = addFrame s [("action", FA RoundEnd), ("cardsInDeck", FI 52), ("table", FC []), ("plate", FI 0), ("players", FP nPls)] -- EVENTUALLY ADD FATE OF CARDS HERE (BACK IN DECK OR NOT)
+    | any (null . plCards) inRoundPls = (s, "Some players still in game have not revealed their hand!")
+    | otherwise                       = (ns, nsStr)
+    where ns = addFrame s [("action", FA RoundEnd), ("deck", FD initialDeck), ("table", FC []), ("plate", FI 0), ("players", FP nPls)] -- EVENTUALLY ADD FATE OF CARDS HERE (BACK IN DECK OR NOT) (THEY ARE GOING BACK IN AT PRESENT)
           nsStr = "Players' Hands: " ++ show justHands ++ "\nRound winner(s) and prize(s): " ++ show winnersPrizes ++ ".\nPlayer(s) in the lead: " ++ show (inTheLead ns)
           nPls = map givePrize $ players f
           givePrize p
             | p `elem` winners = newPlayer p [("balance", PI (prize + balance p)), ("onPlate", PI 0), ("status", PA $
-            Won [num p] prize), ("hisCards", PC []), ("hisHand", PH $ Hand HighCard (HV Two) 0 [])]
-            | otherwise        = newPlayer p [("onPlate", PI 0), ("hisCards", PC []), ("hisHand", PH $ Hand HighCard (HV Two) 0 [])]
+            Won [num p] prize), ("plCards", PC []), ("plHand", PH $ Hand HighCard (HV Two) 0 [])]
+            | otherwise        = newPlayer p [("onPlate", PI 0), ("plCards", PC []), ("plHand", PH $ Hand HighCard (HV Two) 0 [])]
           winnersPrizes = map (\p-> (num p,prize)) winners -- ADD SPLIT POTS ETC HERE!!!!!!!!!!
           prize = (plate f) `div` (length winners)
           winners = head . groupBy eqPlHands $ plsByHands
-          justHands = map (\p-> (num p, (\h-> (hType h, hTField h)) $ hisHand p)) plsByHands
+          justHands = map (\p-> (num p, (\h-> (hType h, hTField h)) $ plHand p)) plsByHands
           plsByHands = reverse . sortBy cmpPlHands $ inRoundPls
           inRoundPls = filter inRound $ players f
           inRound p = case status p of
                 Out  _ -> False
                 Fold _ -> False
                 _      -> True
-          cmpPlHands = cmpHands `on` (cards . hisHand)
-          eqPlHands  = eqHands  `on` (cards . hisHand)
+          cmpPlHands = cmpHands `on` (cards . plHand)
+          eqPlHands  = eqHands  `on` (cards . plHand)
 
 
 
@@ -358,7 +402,7 @@ fieldHandler s@(f:_) funcStr = (s, msg)
     where msg = case funcStr of
             "action"      -> val action
             "playersNum"  -> val playersNum
-            "userNum"     -> val userNum
+            "userId"     -> val userId
             "dealer"      -> val dealer
             "deck"        -> val deck
             "table"       -> val table
@@ -377,6 +421,6 @@ updatePlayerAndTable f pNum pcs tcs = [("table", FC nTab), ("players", FP nPls)]
     where nTab = tcs ++ (table f)
           nPls = map setPlrCards $ players f
           setPlrCards p
-            | num p == pNum = newPlayer p [("hisCards", PC nPcs), ("hisHand", PH $ bestHand (nPcs ++ nTab))]
-            | otherwise          = p
-                where nPcs = pcs ++ hisCards p
+            | num p == pNum = newPlayer p [("plCards", PC nPcs), ("plHand", PH $ bestHand (nPcs ++ nTab))]
+            | otherwise     = p
+                where nPcs = pcs ++ plCards p

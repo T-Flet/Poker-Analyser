@@ -50,19 +50,6 @@ bestHandType cs
     | Just (htv,ncs) <- isOnePair       cs = Hand OnePair       (HV htv) 0 ncs
     | Just (htv,ncs) <- isHighCard      cs = Hand HighCard      (HV htv) 0 ncs
 
---bestHandType :: [Card] -> Hand
---bestHandType cs
---    | Just x <- isRoyalFlush    cs = x
---    | Just x <- isStraightFlush cs = x
---    | Just x <- isFourOfAKind   cs = x
---    | Just x <- isFullHouse     cs = x
---    | Just x <- isFlush         cs = x
---    | Just x <- isStraight      cs = x
---    | Just x <- isThreeOfAKind  cs = x
---    | Just x <- isTwoPair       cs = x
---    | Just x <- isOnePair       cs = x
---    | Just x <- isHighCard      cs = x
-
 
     -- Return all the HandTypes that the given cards constitute
     -- and their carachteristic fields and their actual 5 cards
@@ -82,22 +69,6 @@ whatIs cs = concat [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
           hTCard :: ([Card] -> Maybe (a,[Card])) -> (a -> HandTypesField) -> HandType -> [Hand]
           hTCard hTChecker constructor hT = maybe [] hander $ hTChecker cs
             where hander (x,ncs) = [Hand hT (constructor x) 0 ncs]
-
---whatIs :: [Card] -> [Hand]
---whatIs cs = concat [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
---    where rF = hTCard isRoyalFlush
---          sF = hTCard isStraightFlush
---          fK = hTCard isFourOfAKind
---          fH = hTCard isFullHouse
---          fl = hTCard isFlush
---          st = hTCard isStraight
---          tK = hTCard isThreeOfAKind
---          tP = hTCard isTwoPair
---          oP = hTCard isOnePair
---          hC = hTCard isHighCard
---
---          hTCard :: ([Card] -> Maybe Hand) -> [Hand]
---          hTCard hTChecker = maybe [] (\x->[x]) $ hTChecker cs
 
 
 

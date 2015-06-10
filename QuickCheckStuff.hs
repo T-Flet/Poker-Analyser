@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.7 - 07-08/06/2015
+--          1.0 - 09-10/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -56,16 +56,16 @@ propConds prop ocs cs =
         prop ocs cs
 
 
-checkAllHtCsProp ocs cs = propConds prop ocs cs
+checkBetterHandTypesProp ocs cs = propConds prop ocs cs
     where prop ocs cs = null $ ress ocs cs
-          ress = checkAllHtCs [2,5,6,7] initialDeck
-    -- Parallel version
-checkAllHtCsParProp ocs cs = propConds prop ocs cs
+          ress = checkBetterHandTypes [2,5,6,7] initialDeck
+
+checkAllHandTypesProp ocs cs = propConds prop ocs cs
     where prop ocs cs = null $ ress ocs cs
-          ress = checkAllHtCsPar [2,5,6,7] initialDeck
+          ress = checkAllHandTypes [2,5,6,7] initialDeck
 
     -- Single Ht property check
-checkSingleHt ht ocs cs = propConds prop ocs cs
+checkSingleHtProp ht ocs cs = propConds prop ocs cs
     where prop ocs cs = all null $ ress ocs cs
           ress = filterBad ht [2,5,6,7] initialDeck
 
@@ -79,25 +79,32 @@ checkSingleHt ht ocs cs = propConds prop ocs cs
 
 main = do
     putStrLn "\nDr_lord's Poker Analyser: HandType counting functions testing"
-    putStrLn "Meant for Isaac Jordan, and Ben Jackson 06/06/2015"
+    putStrLn "Meant for Isaac Jordan, and Ben Jackson 09/06/2015"
     checkInput
 
 checkInput = do
-    putStrLn "\nPlease enter either 'quit', 'normal' or 'parallel'"
+    putStrLn "\nPlease enter either 'quit', 'all', 'better' or any single HandType's name: "
+    putStrLn $ show allHandTypes
+    putStrLn "'all' and 'better' are referred to the HandType constituted by the given cards"
     cmd <- getLine
     case cmd of
         "quit" -> do
                     putStrLn "\nThank you for testing. Please send me a print of your results, XD"
                     putStrLn "The important part usually is just the last 3 lines; it will be something like 'True because...' or 'Falsifiable after...'"
-        "normal" -> do
-                    quickCheckWith stdArgs { maxSuccess = 10000 } checkAllHtCsProp
+        "all" -> do
+                    quickCheckWith stdArgs { maxSuccess = 10000 } checkAllHandTypesProp
                     checkInput
-        "parallel" -> do
-                    quickCheckWith stdArgs { maxSuccess = 10000 } checkAllHtCsParProp
+        "better" -> do
+                    quickCheckWith stdArgs { maxSuccess = 10000 } checkBetterHandTypesProp
                     checkInput
-        _ -> do
+        x
+            | x `elem` map show allHandTypes -> do
+                quickCheckWith stdArgs { maxSuccess = 10000 } $ checkSingleHtProp (read x :: HandType)
+                checkInput
+            | otherwise -> do
                 putStrLn "Unrecognised input"
                 checkInput
+
 
 
 
