@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.0 - 09-10/06/2015
+--          1.1 - 10-11/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -26,7 +26,7 @@
 module HandCounters where
 
 import DataTypes
-import GeneralFunctions (choose, combinations, ascLength, subsetOf, listUnZip)
+import GeneralFunctions (choose, combinations, ascLength, subsetOf, listUnZip, noSupersets)
 
 import Data.List (tails, group, groupBy, sort, sortBy, delete, nub, partition, union, (\\))
 import Data.Char (toLower)
@@ -230,7 +230,7 @@ countThreeOfAKind tcns d ocs cs = countPossHands ThreeOfAKind aphs tcns d ocs cs
 
 countTwoPair tcns d ocs cs = countPossHands TwoPair aphs tcns d ocs cs
     where aphs
-            | null cs   = []
+            | null cs   = [] -- HAS TO BE REMOVED AND SOLVED DIFFERENTLY
                 -- Any Explicit Three or Four OfAKind present
             | any ((>=3) . length) $ valueGroups cs = []
             | otherwise = case best2Nplets of
@@ -274,7 +274,7 @@ countOnePair tcns d ocs cs = countPossHands OnePair aphs tcns d ocs cs
 countHighCard tcns d ocs cs = countPossHands HighCard aphs tcns d ocs cs
     where aphs = group apcs
           apcs
-            | null cs                              = []
+            | null cs                              = [] -- HAS TO BE REMOVED AND SOLVED DIFFERENTLY
                 -- Any Straight Present
             | any (`subsetOf` csvs) stpvs          = []
                 -- Any Flush present
@@ -306,22 +306,23 @@ countHighCard tcns d ocs cs = countPossHands HighCard aphs tcns d ocs cs
     -- Possible Hands narrowing down process common to all count functions
 countPossHands :: HandType -> [[Card]] -> [Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount]
 countPossHands ht allPossHands tcns d outCs cs = map finalCount tcns'
-    where tcns' = apprTcns tcns usedCsNum
+    where tcns' = apprTcns tcns alreadyDrawn
           finalCount tcn = HandTypeCount ht possHands tcn countTuples
-            where csLeft = tcn - usedCsNum
-                  countTuples = map ((,) <$> length <*> head) $ group hProbs
-                  hProbs = map (handProb csLeft d) possHands
-                  possHands = sortBy ascLength $ filter ((<= csLeft) . length) neededHands
+            where leftToDraw = tcn - alreadyDrawn
+                  countTuples = map ((,) <$> length <*> handProb leftToDraw d . head) possHandsGs
+                    -- Remove noSupersets below to go back to original results
+                  possHandsGs = groupBy ((==) `on` length) $ noSupersets possHands
+                  possHands = sortBy ascLength $ filter ((<= leftToDraw) . length) neededHands
           neededHands = map (\\cs) notOcsHands
           notOcsHands = filter (not . any (`elem` outCs)) allPossHands
-          usedCsNum = length outCs + length cs
+          alreadyDrawn = length outCs + length cs
 
 
     -- Return the appropriate Target Card NumberS for a given number of cards
     -- which are already in play
 apprTcns :: [Int] -> Int -> [Int]
-apprTcns tcns usedCsNum
-    | null tcns = dropWhile (<usedCsNum) [2,5,6,7]
+apprTcns tcns alreadyDrawn
+    | null tcns = dropWhile (< alreadyDrawn) [2,5,6,7]
     | otherwise = tcns
     -- Same thing but given the current round stage
 stageTcns :: Char -> [Int]
@@ -336,7 +337,7 @@ stageTcns stage = case toLower stage of
     -- the given number of draws
     -- EVOLVE THIS INTO USING ALL THE VALUES IN Deck
 handProb :: (Fractional a) => Int -> Deck -> [Card] -> a
-handProb csl d cs
+handProb ltd d cs
     | null cs   = fromIntegral 1
     | otherwise = ((/) `on` fromIntegral) drawsWithCs allPossDraws
         where -- The ok draws are the ones which contain the h cards and any of the
@@ -345,7 +346,7 @@ handProb csl d cs
               allPossDraws = n     `choose` k
               -- h <= k <= n
               n = cardsIn d
-              k = csl
+              k = ltd
               h = length cs
 
 
