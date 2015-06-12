@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.1 - 10-11/06/2015
+--          1.2 - 11-12/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -230,13 +230,12 @@ countThreeOfAKind tcns d ocs cs = countPossHands ThreeOfAKind aphs tcns d ocs cs
 
 countTwoPair tcns d ocs cs = countPossHands TwoPair aphs tcns d ocs cs
     where aphs
-            | null cs   = [] -- HAS TO BE REMOVED AND SOLVED DIFFERENTLY
                 -- Any Explicit Three or Four OfAKind present
             | any ((>=3) . length) $ valueGroups cs = []
-            | otherwise = case best2Nplets of
-                [[c1,c2],[c3,c4]] -> eqOrBetter (value c3) phs
-                _                 -> phs
-          best2Nplets = head . groupBy ((==) `on` length) $ valueDescGroups cs
+            | otherwise = case bestNplets of
+                [[c1,c2],[c3,c4]]:_ -> eqOrBetter (value c3) phs
+                _                   -> phs
+          bestNplets = groupBy ((==) `on` length) $ valueDescGroups cs
             -- Notice value c3 < value c1
           eqOrBetter v = filter (all ((>=v) . value))
 
@@ -272,15 +271,15 @@ countOnePair tcns d ocs cs = countPossHands OnePair aphs tcns d ocs cs
 
 
 countHighCard tcns d ocs cs = countPossHands HighCard aphs tcns d ocs cs
-    where aphs = group apcs
+    where aphs = map (:[]) apcs
           apcs
-            | null cs                              = [] -- HAS TO BE REMOVED AND SOLVED DIFFERENTLY
                 -- Any Straight Present
             | any (`subsetOf` csvs) stpvs          = []
                 -- Any Flush present
             | any ((>4) . length) $ suitGroups cs  = []
                 -- Any nPlet present
             | any ((>1) . length) $ valueGroups cs = []
+            | null cs   = allCards
                 -- Otherwise just trim the possible Suits and Values sets
             | otherwise = maximum cs : [Card v s | v <- apvs, s <- apss]
 
@@ -310,9 +309,8 @@ countPossHands ht allPossHands tcns d outCs cs = map finalCount tcns'
           finalCount tcn = HandTypeCount ht possHands tcn countTuples
             where leftToDraw = tcn - alreadyDrawn
                   countTuples = map ((,) <$> length <*> handProb leftToDraw d . head) possHandsGs
-                    -- Remove noSupersets below to go back to original results
-                  possHandsGs = groupBy ((==) `on` length) $ noSupersets possHands
-                  possHands = sortBy ascLength $ filter ((<= leftToDraw) . length) neededHands
+                  possHandsGs = groupBy ((==) `on` length) $ sortBy ascLength possHands
+                  possHands = filter ((<= leftToDraw) . length) neededHands
           neededHands = map (\\cs) notOcsHands
           notOcsHands = filter (not . any (`elem` outCs)) allPossHands
           alreadyDrawn = length outCs + length cs
