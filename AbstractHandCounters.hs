@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.2 - 10/06/2015
+--          0.3 - 18/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -30,7 +30,7 @@ import GeneralFunctions (choose)
 import DataTypes
 import HandTypeCheckers
 
-import Data.List (nub, (\\))
+import Data.List (nub, tails, (\\))
 import Control.Applicative ((<$>), (<*>))
 
 
@@ -38,22 +38,61 @@ import Control.Applicative ((<$>), (<*>))
 ---- 1 - COMPLETE HANDTYPE INSTANCES CALCULATORS -------------------------------
 
 
+
+
+    -- Map each HandType to its abstract counter function
+getAbHtcFunc ht = case ht of
+    RoyalFlush    -> abstrCountRoyalFlush
+--    StraightFlush -> abstrCountStraightFlush
+--    FourOfAKind   -> abstrCountFourOfAKind
+--    FullHouse     -> abstrCountFullHouse
+--    Flush         -> abstrCountFlush
+--    Straight      -> abstrCountStraight
+--    ThreeOfAKind  -> abstrCountThreeOfAKind
+--    TwoPair       -> abstrCountTwoPair
+--    OnePair       -> abstrCountOnePair
+--    HighCard      -> abstrCountHighCard
+
+
+
 ---- 2 - SINGLE HANDTYPE INSTANCES CALCULATORS ---------------------------------
 
+    -- Call a single abstract HandType counter, without manually inputting all
+    -- the data yielded by the hand analysis functions
+
+    -- EVENTUALLY MAKE tcn INTO tcns
+singleAbstrHtCount :: HandType -> Int -> Deck -> [Card] -> [Card] -> Int
+singleAbstrHtCount ht tcn d ocs cs = getAbHtcFunc ht tcn d ocs cs hd hs
+    where hd = handData tcn ocs cs
+          hs = handStats d ocs cs
+
+
     -- Each of these functions takes as input:
-    --      The number n of cards which will be drawn by the end
+    --      The target number of cards which will be drawn by the end
     --      The current state of the Deck
     --      The Cards which are not supposed to be considered (e.g. someone else has them)
     --      The Cards which have already been drawn
+    --      The data returned by the hand analysis functions
     -- And they return the number of hands of n cards which are their HandType
 
-abstrCountRoyalFlush :: Int -> Deck -> [Card] -> [Card] -> Int
-abstrCountRoyalFlush n d ocs cs = htCheck RoyalFlush cs itIs itIsNot
-    where (lid,ltd,ad) = handData n ocs cs
-          itIs = lid `choose` ltd
+    -- NOTE: These functions are guaranteed to make sense up to 7 target cards
+
+
+
+abstrCountRoyalFlush tcn d ocs cs (lid,ltd,ad) (hand,vdgs,sdgs) =
+                                    htCheck RoyalFlush (hType hand) itIs itIsNot
+    where itIs = lid `choose` ltd
           itIsNot = sum $ map ((choose <$> (lid-) <*> (ltd-)) . length) phs
           phs = map (\\ cs) $ fromSVG (allSuits \\ npss) (enumFrom Ten)
           npss = nub . map suit $ filter ((>=Ten) . value) ocs
+
+
+--abstrCountStraightFlush tcn d ocs cs (lid,ltd,ad) (hand,vdgs,sdgs) =
+--                                    htCheck StraightFlush (hType hand) itIs itIsNot
+--    where itIs = (lid `choose` ltd) - ((choose <$> (lid-) <*> (ltd-)) diff)
+--          diff = ((-) `on` fromEnum) Ace . toV $ hTField hand
+--
+--          itIsNot =
 
 
 
@@ -64,19 +103,17 @@ abstrCountRoyalFlush n d ocs cs = htCheck RoyalFlush cs itIs itIsNot
 ---- 3 - GENERAL FUNCTIONS -----------------------------------------------------
 
     -- Structure common to all abstract counters
-
-        -- EVENTUALLY SUBSTITUTE THIS WITH A VALUE FROM handStats
-htCheck :: HandType -> [Card] -> Int -> Int -> Int
-htCheck ht cs itIs itIsNot
-    | hType (bestHandType cs) == ht = itIs
-    | otherwise                     = itIsNot
+htCheck :: HandType -> HandType -> Int -> Int -> Int
+htCheck ht csHt itIs itIsNot
+    | csHt == ht = itIs
+    | otherwise  = itIsNot
 
 
     -- Data extraction common to all abstract counters
 handData :: Int -> [Card] -> [Card] -> (Int,Int,Int)
-handData n ocs cs = (leftInDeck, leftToDraw, alreadyDrawn)
-    where leftInDeck = 52 - alreadyDrawn
-          leftToDraw = n  - alreadyDrawn
+handData tcn ocs cs = (leftInDeck, leftToDraw, alreadyDrawn)
+    where leftInDeck = 52  - alreadyDrawn
+          leftToDraw = tcn - alreadyDrawn
           alreadyDrawn = length ocs + length cs
 
 
@@ -84,12 +121,20 @@ handData n ocs cs = (leftInDeck, leftToDraw, alreadyDrawn)
     -- abstract counter doing its own checks.
     -- Among other things it returns:
     --      which HandType the cards constitute
-    --      whether any specific HandType is impossible
+    --      the Cards by descending Suit and Value groups
 
-        -- PROBABLY ADD MOST CHECKS HERE AS ABSTRACT COUNTERS ARE WRITTEN
---handStats :: Deck -> [Card] -> [Card] -> (,,)
---handStats d ocs cs = (ht, )
---    where ht = hType $ bestHandType cs
+    --        NOT YET IMPLEMENTED
+    --      whether any specific HandType is impossible
+handStats :: Deck -> [Card] -> [Card] -> (Hand,[[Card]],[[Card]])
+handStats d ocs cs = (hand, vdgs, sdgs)
+    where hand = bestHandType cs
+          vdgs = valueDescGroups cs
+          sdgs = suitDescGroups cs
+
+
+    -- List of Straight Values
+straightValues :: [[Value]]
+straightValues = take 10 . map (take 5) . tails $ Ace:allValues
 
 
 
