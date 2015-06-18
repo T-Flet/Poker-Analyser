@@ -48,6 +48,7 @@ data Suit = Spades | Clubs | Diamonds | Hearts
 
 data Card = Card {value :: Value, suit :: Suit}
                 deriving (Eq, Ord)
+instance NFData Card
 instance Show Card where
     show c = (show $ value c) ++ " of " ++ (show $ suit c)
 instance Enum Card where

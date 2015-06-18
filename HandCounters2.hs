@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.3 - 18-19/06/2015
+--          1.2 - 11-12/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -61,47 +61,47 @@ countBetterHandTypes mHt tcns d ocs cs = countHandTypes hts tcns d ocs cs
 countAllHandTypes :: [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
 countAllHandTypes = countHandTypes (reverse allHandTypes)
 
-
-    -- Possible Hands narrowing down process common to all count functions
+    -- Apply the given HandTypes' Instances Calculators to the given cards, and
+    -- get the results in the reasonable order: sublists corresponding to each
+    -- tcns, containing all the HandTypes' counts (descending).
+    -- The order before the listUnzip is counts grouped by HandTypes first:
+    -- sublists corresponding to each HandType (descending), containing all the
+    -- tcns counts
 countHandTypes :: [HandType] -> [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
-countHandTypes hts tcns d ocs cs = [map (finalCount tcn) htsCompleters | tcn <- tcns']
-    where tcns' = apprTcns tcns alreadyDrawn
-          finalCount tcn (ht,compls) = HandTypeCount ht possHands tcn countTuples
-            where leftToDraw = tcn - alreadyDrawn
-                  countTuples = map ((,) <$> length <*> handProb leftToDraw d . head) possHandsGs
-                  possHandsGs = groupBy ((==) `on` length) $ sortBy ascLength possHands
-                  possHands = filter ((<= leftToDraw) . length) compls
-          htsCompleters = map possHT hts `using` parList rdeepseq
-          possHT ht = getPossHtFunc ht ocs cs
-          alreadyDrawn = length ocs + length cs
+countHandTypes hts tcns d ocs cs = listUnZip countsLists
+    where countsLists = map (\f-> f tcns' d ocs cs) countFunctions `using` parList rdeepseq
+          countFunctions = map getHtcFunc hts
+            -- Having this here avoids generating it for every single count
+          tcns' = apprTcns tcns $ length ocs + length cs
 
 
     -- Map each HandType to its counter function
-getPossHtFunc :: HandType -> ([Card] -> [Card] -> (HandType,[[Card]]))
-getPossHtFunc ht = case ht of
-    RoyalFlush    -> possRoyalFlush
-    StraightFlush -> possStraightFlush
-    FourOfAKind   -> possFourOfAKind
-    FullHouse     -> possFullHouse
-    Flush         -> possFlush
-    Straight      -> possStraight
-    ThreeOfAKind  -> possThreeOfAKind
-    TwoPair       -> possTwoPair
-    OnePair       -> possOnePair
-    HighCard      -> possHighCard
+getHtcFunc :: HandType -> ([Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount])
+getHtcFunc ht = case ht of
+    RoyalFlush    -> countRoyalFlush
+    StraightFlush -> countStraightFlush
+    FourOfAKind   -> countFourOfAKind
+    FullHouse     -> countFullHouse
+    Flush         -> countFlush
+    Straight      -> countStraight
+    ThreeOfAKind  -> countThreeOfAKind
+    TwoPair       -> countTwoPair
+    OnePair       -> countOnePair
+    HighCard      -> countHighCard
 
 
 
 ---- 2 - SINGLE HANDTYPE INSTANCES CALCULATORS ---------------------------------
 
-    -- Each of the following functions returns the list of completers of possible
-    -- instances of a specific HandType from the given Card lists
+    -- Each of the following functions returns the list of HandTypeCounts of possible
+    -- instances of a specific HandType which can be obtained by completing a
+    -- set of n cards, where n is each element of the given list of numbers.
 
-    -- Their type signature is:
-    --              [Card] -> [Card] -> (HandType,[[Card]])
-    -- the cards which should not be considered (like the player's if working
-    -- just on the table) and the cards in question yield the necessary cards
-    -- to draw in order to get that HandType
+    -- Their input is:
+    --              [Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount]
+    -- multiple numbers of cards left to draw, the current Deck, the cards which
+    -- should not be considered (like the player's if working just on the table)
+    -- and the cards in question.
 
     -- Note: each function avoids counting instances of their HandType which
     -- also qualify as a different one (be it higher or lower)
@@ -114,11 +114,11 @@ getPossHtFunc ht = case ht of
     -- lists of identical cards, which are not possible)
 
 
-possRoyalFlush = getCompleters RoyalFlush aphs
+countRoyalFlush = countPossHands RoyalFlush aphs
     where aphs = fromSVG allSuits (enumFrom Ten)
 
 
-possStraightFlush ocs cs = getCompleters StraightFlush aphs ocs cs
+countStraightFlush tcns d ocs cs = countPossHands StraightFlush aphs tcns d ocs cs
     where aphs = concat $ map (fromSVG allSuits) apvs
             -- Remove the Straights which, if present, are overshadowed by another
             -- greater by one (a Card of Value just above them is in cs)
@@ -129,11 +129,11 @@ possStraightFlush ocs cs = getCompleters StraightFlush aphs ocs cs
           pvs = init straightValues
 
 
-possFourOfAKind = getCompleters FourOfAKind aphs
+countFourOfAKind = countPossHands FourOfAKind aphs
     where aphs = concat $ map (\val-> fromVSG [val] allSuits) allValues
 
 
-possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
+countFullHouse tcns d ocs cs = countPossHands FullHouse aphs tcns d ocs cs
     where aphs = case filter ((>1) . length) $ valueDescGroups cs of
             (vcs1@[c,d,e]:vcs2:vcss) -> (:) (vcs1++vcs2) . getAphs $ justBetter vcs1 vcs2
             _ -> getAphs apvs'
@@ -146,7 +146,7 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
           noFourOfAKinds v ss = not . any (`elem` cs) $ makeCs (repeat v) (allSuits \\ ss)
 
 
-possFlush ocs cs = getCompleters Flush aphs ocs cs
+countFlush tcns d ocs cs = countPossHands Flush aphs tcns d ocs cs
     where aphs = case filter ((>=5) . length) $ suitGroups cs of
             [] -> [fromSV [s] vs | vs <- apvs, s <- allSuits]
             fl -> [fromSV [s] vs | vs <- filter better apvs, let s = suit . head $ head fl]
@@ -168,7 +168,7 @@ possFlush ocs cs = getCompleters Flush aphs ocs cs
           explStrVs = (enumFromTo Two Five ++ [Ace]) : (tail straightValues)
 
 
-possStraight ocs cs = getCompleters Straight aphs ocs cs
+countStraight tcns d ocs cs = countPossHands Straight aphs tcns d ocs cs
     where aphs
                 -- Any Straight which is not a StraightFlush present
             | straightButNotFlush = []:phs
@@ -203,7 +203,7 @@ possStraight ocs cs = getCompleters Straight aphs ocs cs
           pss  n = map toList $ Seq.replicateM n allSuits
 
 
-possThreeOfAKind ocs cs = getCompleters ThreeOfAKind aphs ocs cs
+countThreeOfAKind tcns d ocs cs = countPossHands ThreeOfAKind aphs tcns d ocs cs
     where aphs = case length nPletsVgs of
             x | x > 1  -> []
             1 -> case length hnpvgs of
@@ -228,7 +228,7 @@ possThreeOfAKind ocs cs = getCompleters ThreeOfAKind aphs ocs cs
           nPletsVgs = filter ((>1) . length) $ valueGroups cs
 
 
-possTwoPair ocs cs = getCompleters TwoPair aphs ocs cs
+countTwoPair tcns d ocs cs = countPossHands TwoPair aphs tcns d ocs cs
     where aphs
                 -- Any Explicit Three or Four OfAKind present
             | any ((>=3) . length) $ valueGroups cs = []
@@ -251,7 +251,7 @@ possTwoPair ocs cs = getCompleters TwoPair aphs ocs cs
 
 
 
-possOnePair ocs cs = getCompleters OnePair aphs ocs cs
+countOnePair tcns d ocs cs = countPossHands OnePair aphs tcns d ocs cs
     where aphs
                 -- Any Straight Present
             | any (`subsetOf` csvs) straightValues          = []
@@ -270,7 +270,7 @@ possOnePair ocs cs = getCompleters OnePair aphs ocs cs
           csvs = cardsValues cs
 
 
-possHighCard ocs cs = getCompleters HighCard aphs ocs cs
+countHighCard tcns d ocs cs = countPossHands HighCard aphs tcns d ocs cs
     where aphs = map (:[]) apcs
           apcs
                 -- Any Straight Present
@@ -302,10 +302,18 @@ possHighCard ocs cs = getCompleters HighCard aphs ocs cs
 
 ---- 3 - GENERAL FUNCTIONS -----------------------------------------------------
 
-    -- Remove all hands which are impossible to get and show only the cards to be drawn
-getCompleters :: HandType -> [[Card]] -> [Card] -> [Card] -> (HandType,[[Card]])
-getCompleters ht allPossHands outCs cs = (ht, map (\\cs) notOcsHands)
-    where notOcsHands = filter (not . any (`elem` outCs)) allPossHands
+    -- Possible Hands narrowing down process common to all count functions
+countPossHands :: HandType -> [[Card]] -> [Int] -> Deck -> [Card] -> [Card] -> [HandTypeCount]
+countPossHands ht allPossHands tcns d outCs cs = map finalCount tcns'
+    where tcns' = apprTcns tcns alreadyDrawn
+          finalCount tcn = HandTypeCount ht possHands tcn countTuples
+            where leftToDraw = tcn - alreadyDrawn
+                  countTuples = map ((,) <$> length <*> handProb leftToDraw d . head) possHandsGs
+                  possHandsGs = groupBy ((==) `on` length) $ sortBy ascLength possHands
+                  possHands = filter ((<= leftToDraw) . length) neededHands
+          neededHands = map (\\cs) notOcsHands
+          notOcsHands = filter (not . any (`elem` outCs)) allPossHands
+          alreadyDrawn = length outCs + length cs
 
 
     -- Return the appropriate Target Card NumberS for a given number of cards
@@ -361,32 +369,33 @@ cardsValues cs = nub $ map value cs
 
     -- Check (as described in checkHtCounts) only the appropriate HandTypes (eq
     -- or better than what cs constitute)
-checkBetterHandTypes :: [Card] -> [Card] -> [(HandType, [HandType])]
-checkBetterHandTypes ocs cs = checkHandTypes hts ocs cs
+checkBetterHandTypes :: [Int] -> Deck -> [Card] -> [Card] -> [(HandType, [[HandType]])]
+checkBetterHandTypes tcns d ocs cs = checkHtCounts hts tcns d ocs cs
     where hts = enumFromThenTo RoyalFlush StraightFlush . hType $ bestHandType cs
 
 
     -- Check (as described in checkHtCounts) all the HandTypes
-checkAllHandTypes :: [Card] -> [Card] -> [(HandType, [HandType])]
-checkAllHandTypes = checkHandTypes (reverse allHandTypes)
+checkAllHandTypes :: [Int] -> Deck -> [Card] -> [Card] -> [(HandType, [[HandType]])]
+checkAllHandTypes = checkHtCounts (reverse allHandTypes)
 
 
     -- Test whether any of the count functions of the given HandTypes yields a
     -- HandType which is not its own. In particular, lookout for ones higher
     -- than it. Also, count the instances of each
-checkHandTypes :: [HandType] -> [Card] -> [Card] -> [(HandType, [HandType])]
-checkHandTypes hts ocs cs = list `using` parList rdeepseq
-    where list = filter (not . null . snd) $ map (bad . getChecks) hts
-          bad (ht,chts) = (ht, nub . sort $ filter (/= ht) chts)
-          getChecks ht = (ht, checkHtc ht ocs cs)
+checkHtCounts :: [HandType] -> [Int] -> Deck -> [Card] -> [Card] -> [(HandType, [[HandType]])]
+checkHtCounts hts tcns d ocs cs = list `using` parList rdeepseq
+    where list = filter (not . null . snd) $ map (notNulls . bad . getChecks) hts
+          notNulls (ht,badChts) = (ht, filter (not . null) badChts)
+          bad (ht,chts) = (ht, map (nub . sort . filter (/= ht)) chts)
+          getChecks ht = (ht, checkHtc ht tcns d ocs cs)
 
 
     -- Return all the completers which yield different HandTypes than the required one
-filterBad :: HandType -> [Card] -> [Card] -> [[Card]]
-filterBad ht ocs cs = filter ((/=ht) . checkSingle cs) . snd $ getPossHtFunc ht ocs cs
+filterBad :: HandType -> [Int] -> Deck -> [Card] -> [Card] -> [[[Card]]]
+filterBad ht tcns d ocs cs = map (filter ((/=ht) . checkSingle cs) . completers) $ getHtcFunc ht tcns d ocs cs
     -- Return all the HandTypes yielded by each completer
-checkHtc  :: HandType -> [Card] -> [Card] -> [HandType]
-checkHtc  ht ocs cs = map    (         checkSingle cs) . snd $ getPossHtFunc ht ocs cs
+checkHtc :: HandType -> [Int] -> Deck -> [Card] -> [Card] -> [[HandType]]
+checkHtc  ht tcns d ocs cs = map (map    (checkSingle cs)          . completers) $ getHtcFunc ht tcns d ocs cs
     -- Return the HandType yielded by a completer
 checkSingle cs = hType . bestHandType . union cs
 

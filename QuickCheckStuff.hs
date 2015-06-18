@@ -58,16 +58,16 @@ propConds prop ocs cs =
 
 checkBetterHandTypesProp ocs cs = propConds prop ocs cs
     where prop ocs cs = null $ ress ocs cs
-          ress = checkBetterHandTypes [2,5,6,7] initialDeck
+          ress = checkBetterHandTypes
 
 checkAllHandTypesProp ocs cs = propConds prop ocs cs
     where prop ocs cs = null $ ress ocs cs
-          ress = checkAllHandTypes [2,5,6,7] initialDeck
+          ress = checkAllHandTypes
 
     -- Single Ht property check
 checkSingleHtProp ht ocs cs = propConds prop ocs cs
     where prop ocs cs = all null $ ress ocs cs
-          ress = filterBad ht [2,5,6,7] initialDeck
+          ress = filterBad ht
 
 
 
