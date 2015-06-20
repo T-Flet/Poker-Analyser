@@ -152,7 +152,9 @@ possFlush ocs cs = getCompleters Flush aphs ocs cs
             fl -> [fromSV [s] vs | vs <- filter better apvs, let s = suit . head $ head fl]
                 where better = all (>= (minimum . map value $ head fl))
 
-            -- Remove all FullHouses and FourOfAKinds
+            -- Remove some FullHouses and FourOfAKinds
+
+            -- NEED TO REMOVE ALL THE OTHER ONES (PROBABLY AT A Card (AND NOT JUST Value STAGE))
           apvs = filter ((>2) . length . group . sort) pvs
             -- Note that each combination below is sorted by ascending Value
           pvs = combinations 5 allValues \\ npvs
