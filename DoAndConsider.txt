@@ -24,10 +24,16 @@
 
     REAL PLAN:
         FIX THIS IN NEW VERSION:
-            let cs = [Card Ace Clubs, Card Four Spades, Card Ace Diamonds] LEADS TO
-            [(Flush,[FullHouse])] AS RESULT
+let cs = [Card Five Hearts, Card Nine Hearts, Card Eight Hearts]
+checkAllHandTypes [] cs
+[(FullHouse,[StraightFlush])]
                 (NEW PROBLEMS ARISE BECAUSE THE COMPLETERS LONGER THAN THE CARDS LEFT
                 TO DRAW ARE NOW TESTED AS WELL)
+
+        FOR EFFICIENCY: TRANSFORM THE LIST COMPREHENSION WITH A MAP IN countHandTypes
+        WITH A FOLD OVER THE tcns WHERE EVERY TIME THE htsCompleters ARE FILTERED FOR
+        LENGTH THEY ARE KEPT AROUND, S.T. THE LONGER ONES WILL NOT HAVE TO BE FILTERED
+        OUT FOR EVERY SUBSEQUENT BUGGER tcn
 
 
         REVISIT THE noSupersets APPROACH TO BETTER PROBABILITIES

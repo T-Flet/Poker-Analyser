@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.3 - 18-19/06/2015
+--          1.4 - 20-21/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -147,7 +147,15 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
 
 
 possFlush ocs cs = getCompleters Flush aphs ocs cs
-    where aphs = case filter ((>=5) . length) $ suitGroups cs of
+    where aphs = filter (noFOAKsOrFullHouses . (union cs)) phs
+
+          noFOAKsOrFullHouses h = case filter ((>=2) . length) $ valueDescGroups h of
+            [] -> True
+            x:xs | length x  >= 4 -> False
+                 | length x  == 3 && length xs >= 1 -> False
+                 | otherwise      -> True
+
+          phs = case filter ((>=5) . length) $ suitGroups cs of
             [] -> [fromSV [s] vs | vs <- apvs, s <- allSuits]
             fl -> [fromSV [s] vs | vs <- filter better apvs, let s = suit . head $ head fl]
                 where better = all (>= (minimum . map value $ head fl))
