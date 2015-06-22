@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.5 - 21-22/06/2015
+--          1.6 - 21-23/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -152,11 +152,16 @@ possFourOfAKind = getCompleters FourOfAKind aphs
 
 
 possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
-    where aphs = case filter ((>1) . length) $ valueDescGroups cs of
+    where aphs = filter (\h-> not $ any (`subsetOf` h) sfCmps) phs
+            -- 2-Card-Max Straight (and Royal) Flush completers
+          sfCmps = concat . map (getStrVs . ((,) <$> suit . head <*> map value)) $ suitGroups cs
+          getStrVs (s,vs) = map (map (\v-> Card v s)) . filter (((&&) <$> (<=2) <*> (/=0)) . length) $ map (\\vs) straightValues
+
+          phs = case filter ((>1) . length) $ valueDescGroups cs of
             (vcs1@[c,d,e]:vcs2:vcss) -> (:) (vcs1++vcs2) . getAphs $ justBetter vcs1 vcs2
             _ -> getAphs apvs'
           getAphs apvs = [makeCs [v3,v3,v3,v2,v2] (ss3++ss2) | (ss3,ss2) <- apsss, (v3,v2) <- apvs, nF v3 ss3 v2 ss2]
-                            `using` parListChunk 100 rdeepseq
+--                            `using` parListChunk 100 rdeepseq
           justBetter vcs1 vcs2 = dropWhile (<= (value $ head vcs1, value $ head vcs2)) apvs'
             -- Ensuring v3 /= v2 prevents FourOfAKinds
           apvs' = [(v3,v2) | v3 <- allValues, v2 <- allValues, v3 /= v2]
@@ -167,7 +172,7 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
 
 possFlush ocs cs = getCompleters Flush aphs ocs cs
     where aphs = filter (noFOAKsOrFullHouses . (union cs)) phs
-                    `using` parListChunk 100 rdeepseq
+--                    `using` parListChunk 100 rdeepseq
 
           noFOAKsOrFullHouses h = case filter ((>=2) . length) $ valueDescGroups h of
             [] -> True
@@ -175,7 +180,8 @@ possFlush ocs cs = getCompleters Flush aphs ocs cs
                  | length x  == 3 && length xs >= 1 -> False
                  | otherwise      -> True
 
-          phs = withStrategy (parListChunk 100 rdeepseq) $ case filter ((>=5) . length) $ suitGroups cs of
+--          phs = withStrategy (parListChunk 100 rdeepseq) $
+          phs = case filter ((>=5) . length) $ suitGroups cs of
             [] -> [fromSV [s] vs | vs <- apvs, s <- allSuits]
             fl -> [fromSV [s] vs | vs <- filter better apvs, let s = suit . head $ head fl]
                 where better = all (>= (minimum . map value $ head fl))
@@ -184,7 +190,7 @@ possFlush ocs cs = getCompleters Flush aphs ocs cs
 
             -- NEED TO REMOVE ALL THE OTHER ONES (PROBABLY AT A Card (AND NOT JUST Value STAGE))
           apvs = filter ((>2) . length . group . sort) pvs
-                    `using` parListChunk 100 rdeepseq
+--                    `using` parListChunk 100 rdeepseq
             -- Note that each combination below is sorted by ascending Value
           pvs = combinations 5 allValues \\ npvs
           npvs = implStrVs ++ explStrVs
@@ -210,7 +216,7 @@ possStraight ocs cs = getCompleters Straight aphs ocs cs
                   sameSuit s vs = (fromSV [s] vs) `subsetOf` cs
 
           phs = filter (\h-> not $ any (`subsetOf` h) npcss) phs'
-                    `using` parListChunk 100 rdeepseq
+--                    `using` parListChunk 100 rdeepseq
             -- Remove all indirect StraightFlushes: when a Straight
             -- is acheived, but some adjacent cards create a StraightFlush)
           npcss = map (\\cs) . nub . concat $ map strFluCs cs
@@ -218,8 +224,8 @@ possStraight ocs cs = getCompleters Straight aphs ocs cs
           strFluVs v = map (delete v) $ filter (v `elem`) straightValues
 
             -- The cards in cs are already not present in these phs'
-          phs' = concat ([ncss . (\\csvs) $ head tsvs | tsvs <- init $ tails straightValues, noBetterStraight tsvs]
-                            `using` parListChunk 100 rdeepseq)
+          phs' = concat ([ncss . (\\csvs) $ head tsvs | tsvs <- init $ tails straightValues, noBetterStraight tsvs])
+--                            `using` parListChunk 100 rdeepseq)
           noBetterStraight (svs:svss) = not $ any (`subsetOf` pBetterSVs) svss
             where pBetterSVs = csvs ++ (svs\\csvs)
           ncss vs = [makeCs vs ss | ss <- apsss !! length vs, noImplicitFlush ss]
@@ -273,7 +279,7 @@ possTwoPair ocs cs = getCompleters TwoPair aphs ocs cs
           eqOrBetter v = filter (all ((>=v) . value))
 
           phs = [ncs | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, let ncs = fromVS [v1] ss1 ++ fromVS [v2] ss2, noBetterHts ncs v1 v2 ss1 ss2]
-                    `using` parListChunk 100 rdeepseq
+--                    `using` parListChunk 100 rdeepseq
           noBetterHts ncs v1 v2 ss1 ss2 = noStraights cs [v1,v2] && noFlushes' ncs && noNPlets ncs [v1,v2]
             -- Implicit Three or Four OfAKinds
           noNPlets ncs vs = not $ any (`elem` cardsValues (cs\\ncs)) vs
