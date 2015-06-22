@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.4 - 20-21/06/2015
+--          1.5 - 21-22/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -35,7 +35,7 @@ import Data.Foldable (toList)
 import Data.Function (on)
 import Control.Applicative ((<$>), (<*>))
 
-import Control.Parallel.Strategies (using, parList, rdeepseq)
+import Control.Parallel.Strategies (withStrategy, using, parList, parListChunk, rdeepseq)
 
 
     -- For testing purposes (see Testing Functions)
@@ -64,16 +64,34 @@ countAllHandTypes = countHandTypes (reverse allHandTypes)
 
     -- Possible Hands narrowing down process common to all count functions
 countHandTypes :: [HandType] -> [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
-countHandTypes hts tcns d ocs cs = [map (finalCount tcn) htsCompleters | tcn <- tcns']
-    where tcns' = apprTcns tcns alreadyDrawn
-          finalCount tcn (ht,compls) = HandTypeCount ht possHands tcn countTuples
-            where leftToDraw = tcn - alreadyDrawn
-                  countTuples = map ((,) <$> length <*> handProb leftToDraw d . head) possHandsGs
-                  possHandsGs = groupBy ((==) `on` length) $ sortBy ascLength possHands
-                  possHands = filter ((<= leftToDraw) . length) compls
+countHandTypes hts tcns d ocs cs = fst $ foldr tcnCount ([],htsCompleters) tcns'
+    where tcnCount tcn (counts,htsCmps) = (newCounts:counts, newHtsCmps)
+            where (newCounts,newHtsCmps) = foldr finalCount ([],[]) htsCmps
+                  finalCount (ht,compls) (newCounts',newHtsCmps') = (newCount:newCounts', (ht,newCompls):newHtsCmps')
+                    where newCount = HandTypeCount ht newCompls tcn countTuples
+                          countTuples = map ((,) <$> length <*> handProb leftToDraw d . head) possHandsGs
+                          possHandsGs = groupBy ((==) `on` length) $ sortBy ascLength newCompls
+                          newCompls = filter ((<= leftToDraw) . length) compls
+                          leftToDraw = tcn - alreadyDrawn
           htsCompleters = map possHT hts `using` parList rdeepseq
           possHT ht = getPossHtFunc ht ocs cs
+          tcns' = apprTcns tcns alreadyDrawn
           alreadyDrawn = length ocs + length cs
+
+    -- THIS IS THE SIMPLER VERSION: here possHands is a filter on the same compls
+    -- every tcn, while in the above version the list is shrunk with every filter
+    -- and passed along, which should be faster for larger lists
+--countHandTypes :: [HandType] -> [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
+--countHandTypes hts tcns d ocs cs = [map (finalCount tcn) htsCompleters | tcn <- tcns']
+--    where finalCount tcn (ht,compls) = HandTypeCount ht possHands tcn countTuples
+--            where leftToDraw = tcn - alreadyDrawn
+--                  countTuples = map ((,) <$> length <*> handProb leftToDraw d . head) possHandsGs
+--                  possHandsGs = groupBy ((==) `on` length) $ sortBy ascLength possHands
+--                  possHands = filter ((<= leftToDraw) . length) compls
+--          htsCompleters = map possHT hts `using` parList rdeepseq
+--          possHT ht = getPossHtFunc ht ocs cs
+--          tcns' = apprTcns tcns alreadyDrawn
+--          alreadyDrawn = length ocs + length cs
 
 
     -- Map each HandType to its counter function
@@ -138,6 +156,7 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
             (vcs1@[c,d,e]:vcs2:vcss) -> (:) (vcs1++vcs2) . getAphs $ justBetter vcs1 vcs2
             _ -> getAphs apvs'
           getAphs apvs = [makeCs [v3,v3,v3,v2,v2] (ss3++ss2) | (ss3,ss2) <- apsss, (v3,v2) <- apvs, nF v3 ss3 v2 ss2]
+                            `using` parListChunk 100 rdeepseq
           justBetter vcs1 vcs2 = dropWhile (<= (value $ head vcs1, value $ head vcs2)) apvs'
             -- Ensuring v3 /= v2 prevents FourOfAKinds
           apvs' = [(v3,v2) | v3 <- allValues, v2 <- allValues, v3 /= v2]
@@ -148,6 +167,7 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
 
 possFlush ocs cs = getCompleters Flush aphs ocs cs
     where aphs = filter (noFOAKsOrFullHouses . (union cs)) phs
+                    `using` parListChunk 100 rdeepseq
 
           noFOAKsOrFullHouses h = case filter ((>=2) . length) $ valueDescGroups h of
             [] -> True
@@ -155,7 +175,7 @@ possFlush ocs cs = getCompleters Flush aphs ocs cs
                  | length x  == 3 && length xs >= 1 -> False
                  | otherwise      -> True
 
-          phs = case filter ((>=5) . length) $ suitGroups cs of
+          phs = withStrategy (parListChunk 100 rdeepseq) $ case filter ((>=5) . length) $ suitGroups cs of
             [] -> [fromSV [s] vs | vs <- apvs, s <- allSuits]
             fl -> [fromSV [s] vs | vs <- filter better apvs, let s = suit . head $ head fl]
                 where better = all (>= (minimum . map value $ head fl))
@@ -164,6 +184,7 @@ possFlush ocs cs = getCompleters Flush aphs ocs cs
 
             -- NEED TO REMOVE ALL THE OTHER ONES (PROBABLY AT A Card (AND NOT JUST Value STAGE))
           apvs = filter ((>2) . length . group . sort) pvs
+                    `using` parListChunk 100 rdeepseq
             -- Note that each combination below is sorted by ascending Value
           pvs = combinations 5 allValues \\ npvs
           npvs = implStrVs ++ explStrVs
@@ -189,6 +210,7 @@ possStraight ocs cs = getCompleters Straight aphs ocs cs
                   sameSuit s vs = (fromSV [s] vs) `subsetOf` cs
 
           phs = filter (\h-> not $ any (`subsetOf` h) npcss) phs'
+                    `using` parListChunk 100 rdeepseq
             -- Remove all indirect StraightFlushes: when a Straight
             -- is acheived, but some adjacent cards create a StraightFlush)
           npcss = map (\\cs) . nub . concat $ map strFluCs cs
@@ -196,7 +218,8 @@ possStraight ocs cs = getCompleters Straight aphs ocs cs
           strFluVs v = map (delete v) $ filter (v `elem`) straightValues
 
             -- The cards in cs are already not present in these phs'
-          phs' = concat [ncss . (\\csvs) $ head tsvs | tsvs <- init $ tails straightValues, noBetterStraight tsvs]
+          phs' = concat ([ncss . (\\csvs) $ head tsvs | tsvs <- init $ tails straightValues, noBetterStraight tsvs]
+                            `using` parListChunk 100 rdeepseq)
           noBetterStraight (svs:svss) = not $ any (`subsetOf` pBetterSVs) svss
             where pBetterSVs = csvs ++ (svs\\csvs)
           ncss vs = [makeCs vs ss | ss <- apsss !! length vs, noImplicitFlush ss]
@@ -250,6 +273,7 @@ possTwoPair ocs cs = getCompleters TwoPair aphs ocs cs
           eqOrBetter v = filter (all ((>=v) . value))
 
           phs = [ncs | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, let ncs = fromVS [v1] ss1 ++ fromVS [v2] ss2, noBetterHts ncs v1 v2 ss1 ss2]
+                    `using` parListChunk 100 rdeepseq
           noBetterHts ncs v1 v2 ss1 ss2 = noStraights cs [v1,v2] && noFlushes' ncs && noNPlets ncs [v1,v2]
             -- Implicit Three or Four OfAKinds
           noNPlets ncs vs = not $ any (`elem` cardsValues (cs\\ncs)) vs

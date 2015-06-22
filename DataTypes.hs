@@ -40,11 +40,11 @@ import Control.Parallel.Strategies
 data Value = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
             | Jack | Queen | King | Ace
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
-
+instance NFData Value
 
 data Suit = Spades | Clubs | Diamonds | Hearts
                 deriving (Eq, Ord, Enum, Bounded, Show, Read)
-
+instance NFData Suit
 
 data Card = Card {value :: Value, suit :: Suit}
                 deriving (Eq, Ord)
