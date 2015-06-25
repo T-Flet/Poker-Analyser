@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.7 - 25/06/2015
+--          1.8 - 25-26/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -30,6 +30,7 @@ import GeneralFunctions (choose, combinations, ascLength, subsetOf, notSubsetOf,
 
 import Data.List (tails, group, groupBy, sort, sortBy, delete, nub, partition, union, (\\))
 import Data.Char (toLower)
+import Data.Maybe (isJust)
 import qualified Data.Sequence as Seq (replicateM)
 import Data.Foldable (toList)
 import Data.Function (on)
@@ -147,12 +148,16 @@ possStraightFlush ocs cs = getCompleters StraightFlush aphs ocs cs
           pvs = init straightValues
 
 
-possFourOfAKind = getCompleters FourOfAKind aphs
-    where aphs = concat $ map (\val-> fromVSG [val] allSuits) allValues
+possFourOfAKind ocs cs = getCompleters FourOfAKind aphs ocs cs
+    where aphs = filter (not . isJust . isStraightFlush . union cs) phs
+          phs = concat $ map (\val-> fromVSG [val] allSuits) allValues
 
 
 possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
-    where aphs = filter (\h-> all (`notSubsetOf` h) sfCmps) phs
+    where aphs
+                -- No FourOfAKind already present
+            | any ((>=4) . length) $ valueGroups cs = []
+            | otherwise = filter (\h-> all (`notSubsetOf` h) sfCmps) phs
             -- 2-Card-Max Straight (and Royal) Flush completers
           sfCmps = concat . map getStrVs $ valuesPerSuit cs
           getStrVs (s,vs) = map (map (\v-> Card v s)) . filter (((&&) <$> (<=2) <*> (/=0)) . length) $ map (\\vs) straightValues
@@ -176,12 +181,6 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
 possFlush ocs cs = getCompleters Flush aphs ocs cs
     where aphs = filter (noFOAKsOrFullHouses . (union cs)) phs
 --                    `using` parListChunk 100 rdeepseq
-
-          noFOAKsOrFullHouses h = case filter ((>=2) . length) $ valueDescGroups h of
-            [] -> True
-            x:xs | length x  >= 4 -> False
-                 | length x  == 3 && length xs >= 1 -> False
-                 | otherwise      -> True
 
 --          phs = withStrategy (parListChunk 100 rdeepseq) $
           phs = case filter ((>=5) . length) $ suitGroups cs of
@@ -210,6 +209,7 @@ possFlush ocs cs = getCompleters Flush aphs ocs cs
 
 possStraight ocs cs = getCompleters Straight aphs ocs cs
     where aphs
+            | not $ noFOAKsOrFullHouses cs = []
                 -- Any Straight which is not a StraightFlush present
             | straightButNotFlush = []:phs
             | otherwise           = phs
@@ -386,6 +386,14 @@ handProb ltd d cs
     -- List of Straight Values
 straightValues :: [[Value]]
 straightValues = take 10 . map (take 5) . tails $ Ace:allValues
+
+
+    -- True if the input cards do not constitute a FourOfAKind or a FullHouse
+noFOAKsOrFullHouses cs = case filter ((>=2) . length) $ valueDescGroups cs of
+    [] -> True
+    x:xs | length x  >= 4 -> False
+         | length x  == 3 && length xs >= 1 -> False
+         | otherwise      -> True
 
 
     -- True if no Flushes are possible by adding the input Suits to the input Cards

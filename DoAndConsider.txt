@@ -24,9 +24,15 @@
 
     REAL PLAN:
         FIX THIS IN NEW VERSION:
-let cs = [Card Five Hearts, Card Five Diamonds, Card Five Clubs, Card Five Spades]
+let Just cs = sequence $ map toCard ["1d", "9d", "8d", "7d"]
 checkAllHandTypes [] cs
-[(FullHouse,[FourOfAKind]),(Straight,[FourOfAKind])]
+
+
+JUST SOLVED:
+            [(FullHouse,[FourOfAKind]),(Straight,[FourOfAKind])]
+            [(Straight,[FullHouse])]
+            [(StraightFlush,[Flush])]
+            [(FourOfAKind,[StraightFlush])]
 
     COMPARE OLD AND NEW possFullHouse!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -40,6 +46,14 @@ checkAllHandTypes [] cs
             IN MANY poss FUNCTIONS THEMSELVES
                 PERHAPS MAKE A SEPARATE VERSION OF SUPER-OPTIMISED (NO CHECKS ON cs FOR BETTER HTS)
                 poss FUNCTIONS TO BE USED ONLY WITH countBetter...
+                    OOORRRRR
+                    PERHAPS MOVE THOSE TESTS IN SEPARATE FUNCTIONS AND CALL THEM ONLY WHEN USING
+                    countAllHandTypes, AND NOT WITH countBetterHandTypes
+                        PERHAPS ADD STANDARD CHECKS FOR ALL BETTER HTS IN THE UNION OF compelters
+                        WITH cs AFTER EACH poss FUNCTION (CASUS: ["1d", "9d", "8d", "7d"] ++
+                        EITHER [[Six of Spades,Six of Clubs,Six of Diamonds,Six of Hearts],
+                        [Jack of Spades,Jack of Clubs,Jack of Diamonds,Jack of Hearts] YIELDS
+                        A StraightFlush INSTEAD OF A FourOfAKind])
 
             PERHAPS MAKE A NEW (==) FOR CARD LISTS, CHECKING THAT THE LENGTH IS THE SAME AND
             THAT EACH ELEMENT OF ONE IS IN THE OTHER

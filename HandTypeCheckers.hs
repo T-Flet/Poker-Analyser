@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.5 - 15/05/2015
+--          0.6 - 25-26/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -110,7 +110,7 @@ isFlush cs = isLenType 5 suit $ suitDescGroups cs
     --       but inOrder would have been applied twice (not as efficient)
 isStraightFlush :: [Card] -> Maybe ((Suit,Value),[Card])
 isStraightFlush cs
-    | Just (val,scs) <- isStraight' , Just (sui,_) <- isFlush' = together val scs sui
+    | Just (sui,fcs) <- isFlush', Just (val,scs) <- isStraight' fcs = together val scs sui
     | otherwise = Nothing
         where together val scs sui
                 | okCs `subsetOf` cs = Just ((sui,val),okCs)
@@ -120,10 +120,13 @@ isStraightFlush cs
                 -- the returned sets of cards are the same is that the Straight
                 -- cards could include an element which is not of the same Suit
                 -- even though the one that is is present in cs
-              isFlush' = isLenType 5 suit sdcs
-              isStraight' = isLenType 5 value ocs
-              sdcs = suitDescGroups cs
-              ocs = inOrder cs
+              isFlush'
+                  | null sdcs       = Nothing
+                  | length hcs >= 5 = Just (suit $ head hcs, hcs)
+                  | otherwise       = Nothing
+                      where hcs = head sdcs
+                            sdcs = suitDescGroups cs
+              isStraight' = isLenType 5 value . inOrder
 
 
     -- Returns the Suit of the RoyalFlush and its constituting cards
