@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.0 - 09/06/2015
+--          1.1 - 25/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -134,6 +134,13 @@ valueDescGroups = sortBy descLength . valueGroups
 suitDescGroups  = sortBy descLength . suitGroups
 valueGroups = groupCardsBy value . sort
 suitGroups  = groupCardsBy suit  . sortBySuit
+    -- Same as above but as tuples
+suitsPerValueDesc, suitsPerValue :: [Card] -> [(Value,[Suit])]
+valuesPerSuitDesc, valuesPerSuit :: [Card] -> [(Suit,[Value])]
+valuesPerSuitDesc = sortBy (descLength `on` snd) . valuesPerSuit
+suitsPerValueDesc = sortBy (descLength `on` snd) . suitsPerValue
+valuesPerSuit = map ((,) <$> suit . head <*> map value) . suitGroups
+suitsPerValue = map ((,) <$> value . head <*> map suit) . valueGroups
 
 
     -- Group cards by descending value or suit assuming they are already sorted

@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.6 - 21-23/06/2015
+--          1.7 - 25/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -26,7 +26,7 @@
 module HandCounters where
 
 import DataTypes
-import GeneralFunctions (choose, combinations, ascLength, subsetOf, listUnZip, noSupersets)
+import GeneralFunctions (choose, combinations, ascLength, subsetOf, notSubsetOf, listUnZip, noSupersets)
 
 import Data.List (tails, group, groupBy, sort, sortBy, delete, nub, partition, union, (\\))
 import Data.Char (toLower)
@@ -152,9 +152,9 @@ possFourOfAKind = getCompleters FourOfAKind aphs
 
 
 possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
-    where aphs = filter (\h-> not $ any (`subsetOf` h) sfCmps) phs
+    where aphs = filter (\h-> all (`notSubsetOf` h) sfCmps) phs
             -- 2-Card-Max Straight (and Royal) Flush completers
-          sfCmps = concat . map (getStrVs . ((,) <$> suit . head <*> map value)) $ suitGroups cs
+          sfCmps = concat . map getStrVs $ valuesPerSuit cs
           getStrVs (s,vs) = map (map (\v-> Card v s)) . filter (((&&) <$> (<=2) <*> (/=0)) . length) $ map (\\vs) straightValues
 
           phs = case filter ((>1) . length) $ valueDescGroups cs of
@@ -167,7 +167,10 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
           apvs' = [(v3,v2) | v3 <- allValues, v2 <- allValues, v3 /= v2]
           apsss = [(ss3,ss2) | ss3 <- combinations 3 allSuits, ss2 <- combinations 2 allSuits]
           nF v3 ss3 v2 ss2 = noFourOfAKinds v3 ss3 && noFourOfAKinds v2 ss2
-          noFourOfAKinds v ss = not . any (`elem` cs) $ makeCs (repeat v) (allSuits \\ ss)
+          noFourOfAKinds v ss = case lookup v fOAKSPVs of
+            Just npss -> all (`notElem` ss) npss
+            Nothing   -> True
+          fOAKSPVs = map ((,) <$> fst <*> (allSuits \\) . snd) $ suitsPerValue cs
 
 
 possFlush ocs cs = getCompleters Flush aphs ocs cs
@@ -215,7 +218,7 @@ possStraight ocs cs = getCompleters Straight aphs ocs cs
                   sameSuits = any (\s-> any (sameSuit s) strVss) allSuits
                   sameSuit s vs = (fromSV [s] vs) `subsetOf` cs
 
-          phs = filter (\h-> not $ any (`subsetOf` h) npcss) phs'
+          phs = filter (\h-> all (`notSubsetOf` h) npcss) phs'
 --                    `using` parListChunk 100 rdeepseq
             -- Remove all indirect StraightFlushes: when a Straight
             -- is acheived, but some adjacent cards create a StraightFlush)

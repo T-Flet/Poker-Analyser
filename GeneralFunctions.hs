@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.1 - 10-11/06/2015
+--          1.2 - 25/06/2015
 --
 --      Description:
 --          This package contains general functions which can be useful in many
@@ -110,8 +110,9 @@ listUnZip xss@(h:_) = foldl separate (replicate (length h) []) xss
 ---- 3 - SET RELATED FUNCTIONS -------------------------------------------------
 
     -- Check whether a set is a subset of a second set
-subsetOf :: (Eq a) => [a] -> [a] -> Bool
-a `subsetOf` b = all (`elem` b) a
+subsetOf, notSubsetOf :: (Eq a) => [a] -> [a] -> Bool
+a `subsetOf` b    = all (`elem` b)    a
+a `notSubsetOf` b = any (`notElem` b) a
 
 
     -- Eliminate all supersets of any element from a list of ascending length lists
