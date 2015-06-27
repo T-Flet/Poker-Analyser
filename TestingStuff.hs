@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.0 - 09-10/06/2015
+--          1.1 - 26-27/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -30,6 +30,7 @@ import HandCounters
 import Test.QuickCheck
 import Data.List (nub)
 import Data.Function (on)
+import GHC.Conc (numCapabilities)
 import Control.Parallel.Strategies
 
 
@@ -73,29 +74,50 @@ checkSingleHtProp ht ocs cs = propConds prop ocs cs
           ress = filterBad ht
 
 
-    -- Test the given HandTypes' poss functions against all possible combinations of 7 Cards
-checkEverythingFor :: [HandType] -> IO ()
-checkEverythingFor hts = do
-    let allCombinations = GF.combinations 7 allCards `using` rdeepseq
+    -- Test the given HandTypes' poss functions against the possible combinations
+    -- of 7 Cards from the given percentage (e.g. 0 means from the beginning)
+checkEverythingFor :: [HandType] -> Float -> IO ()
+checkEverythingFor hts perc = do
+    let startNum = (floor ((perc  / 100.0) * acn)) :: Int
+    let allCombinations = GF.combinations 7 allCards `using` evalList rdeepseq
     putStrLn "All combinations cached (look at your RAM, XD)"
-    putStrLn "The testing will now happen in repeating parallel threads of 100 tests each"
-    putStrLn "There will now be a very long pause without writing during testing"
+    putStrLn $ "The starting combination number corresponding to the " ++ show perc ++ "% is: " ++ show startNum
+    putStrLn "The testing will now happen in repeating parallel threads of N tests each"
+    putStr "What should the value of N be (100 might be good)? (Int): "
+    tTNStr <- getLine
+    let tTN = read tTnStr :: Int -- threadTestNumber
+    putStrLn "There will now be a long pause without writing during each batch of testing threads"
     putStrLn "Good luck!! XD"
 
-    let result = bools allCombinations
+    testingBatch acn startNum tTN $ drop startNum allCombinations
+        where acn = 52 `GF.choose` 7
 
-    if null result
-        then putStrLn "SUCCESS!!!\nEverything works!!! This is AMAZING!!!"
+
+testingBatch :: Int -> Int -> Int -> [[Card]] -> IO ()
+testingBatch acn currentNum tTN combs = do
+    let batchLength = numCapabilities * tTN
+    let (thisBatch,newCombs) = splitAt batchLength combs
+
+    let bools = map (null . curriedCheck) thisBatch `using` parListChunk tTN rdeepseq
+        where curriedCheck h = checkHandTypes nhts [] h
+                where nhts
+                        | null hts  = enumFromThenTo RoyalFlush StraightFlush . hType $ bestHandType hts
+                        | otherwise = hts
+
+    let percentage = ((((/) `on` fromIntegral) resNum acn) :: Float) * 100.0
+        l = length $ takeWhile (==True) bools
+        resNum = currentNum + l
+    in if l == batchLength
+        then do
+            putStrLn $ "OK up to " ++ show newNum ++ " : " ++ show percentage ++ "%"
+            testingBatch newNum tTN newCombs
+                where newNum = currentNum + batchLength
         else do
-                let n = length result
-                putStrLn $ "Stopped at the first failure, which was the hand number: " ++ show n
-                let percentage = (((/) `on` fromIntegral) n $ 52 `GF.choose` 7) :: Float
+                putStrLn $ "Stopped at first failure, which was hand number: " ++ show resNum
                 putStrLn $ "This means that " ++ show percentage ++ "% of the combinations were evaluated to be ok"
                 putStrLn "The problematic combination is:"
-                putStrLn . show $ allCombinations!!n
+                putStrLn . show $ combs!!l
                 putStrLn "Please send me this result"
-        where bools = takeWhile (==True) . withStrategy (parListChunk 100 rdeepseq) . needToBeTrue
-              needToBeTrue allCombs = map (null . checkHandTypes hts []) allCombs
 
 
 
@@ -128,6 +150,11 @@ checkInput = do
                     checkInput
         "ultimate" ->
                     do
+                        putStrLn "From what percentage of all combinations do you want to start testing?"
+                        putStrLn "(Note that the process will assume that all the combinations before that percentage check out)"
+                        putStr "(Float): "
+                        percStr <- getLine
+                        let perc = read percStr :: Float
                         checkEverythingFor allHandTypes
         x
             | x `elem` map show allHandTypes -> do
