@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.1 - 26-27/06/2015
+--          1.1.1 - 27-28/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -78,19 +78,18 @@ checkSingleHtProp ht ocs cs = propConds prop ocs cs
     -- of 7 Cards from the given percentage (e.g. 0 means from the beginning)
 checkEverythingFor :: [HandType] -> Float -> IO ()
 checkEverythingFor hts perc = do
-    let startNum = (floor ((perc  / 100.0) * acn)) :: Int
-    let allCombinations = GF.combinations 7 allCards `using` evalList rdeepseq
-    putStrLn "All combinations cached (look at your RAM, XD)"
     putStrLn $ "The starting combination number corresponding to the " ++ show perc ++ "% is: " ++ show startNum
     putStrLn "The testing will now happen in repeating parallel threads of N tests each"
     putStr "What should the value of N be (100 might be good)? (Int): "
     tTNStr <- getLine
     let tTN = read tTnStr :: Int -- threadTestNumber
-    putStrLn "There will now be a long pause without writing during each batch of testing threads"
+    putStrLn "There will now be a pause without writing during each batch of testing threads"
     putStrLn "Good luck!! XD"
 
     testingBatch acn startNum tTN $ drop startNum allCombinations
-        where acn = 52 `GF.choose` 7
+        where startNum = (floor ((perc  / 100.0) * acn)) :: Int
+              allCombinations = GF.combinations 7 allCards
+              acn = 52 `GF.choose` 7
 
 
 testingBatch :: Int -> Int -> Int -> [[Card]] -> IO ()

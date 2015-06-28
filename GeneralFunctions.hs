@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.2 - 25/06/2015
+--          1.3 - 27-28/06/2015
 --
 --      Description:
 --          This package contains general functions which can be useful in many
@@ -12,9 +12,10 @@
 --
 --   Sections:
 --       0 - Imports
---       1 - Mathematical Functions
---       2 - Sorting and Grouping Functions
---       3 - Set Related Functions
+--       1 - Numerical Bases
+--       2 - Combinations
+--       3 - Sorting and Grouping Functions
+--       4 - Set Related Functions
 --
 
 
@@ -24,13 +25,48 @@
 module GeneralFunctions where
 
 import Data.Function (on)
-import Data.List (nub)
+import Data.List (nub, foldl')
+import Data.Char (chr, ord, isDigit, isUpper, isLower)
 
 
 
----- 1 - MATHEMATICAL FUNCTIONS ------------------------------------------------
+---- 1 - NUMERICAL BASES -------------------------------------------------------
 
-    -- Classic mathematical function; safe Type management
+    -- Base b digits of decimal v
+toBase :: Int -> Int -> [Int]
+toBase b v = toBase' [] v
+    where toBase' a 0 = a
+          toBase' a v = toBase' (r:a) q
+            where (q,r) = v `divMod` b
+
+    -- Decimal Int from base b digits ds
+fromBase :: Int -> [Int] -> Int
+fromBase b ds = foldl' (\n k -> n * b + k) 0 ds
+
+
+    -- Note: The following pair of functions only works for bases up to 10+27
+
+    -- String of single Char digits (using numbers first, then lower and then
+    -- capital alphabet) from list of Int digits
+toAlphaDigits :: [Int] -> String
+toAlphaDigits = map convert
+    where convert n
+            | n < 10    = chr (n + ord '0')
+            | otherwise = chr (n + ord 'a' - 10)
+
+    -- Opposite of above
+fromAlphaDigits :: String -> [Int]
+fromAlphaDigits = map convert
+    where convert c
+            | isDigit c = ord c - ord '0'
+            | isUpper c = ord c - ord 'A' + 10
+            | isLower c = ord c - ord 'a' + 10
+
+
+
+---- 2 - COMBINATIONS ----------------------------------------------------------
+
+    -- Classic mathematical function
 choose :: Integral a => a -> a -> a
 infixl 5 `choose`
 n `choose` k = fromIntegral $ product [sk+1..sn] `div` product [1..sn-sk]
@@ -38,19 +74,42 @@ n `choose` k = fromIntegral $ product [sk+1..sn] `div` product [1..sn-sk]
 
 
     -- Return all the "choose" combinations of length k from a list of length n
+    -- NOTE: If the input list is sorted, so will the output list of lists
     -- NOTE: This is a direct translation of the mathematical recurrence
     -- relation of Binomial Coefficients
     -- NOTE: (length $ combinations k xs) == ((length xs) `choose` k)
     -- NOTE: If using this function leads to a non-exhaustive condition error,
-    --      the cause probably is negative nput values
+    --          the cause probably is negative input values
     -- NOTE: If k > length xs the result will always be 1
 combinations :: Int -> [a] -> [[a]]
 combinations k xs = combinations' (length xs) k xs
-  where combinations' n k' ls@(y:ys)
+  where combinations' n k' yys@(y:ys)
           | k' == 0   = [[]]
-          | k' >= n   = [ls]
-          | null ls   = []
+          | k' >= n   = [yys]
+          | null yys  = []
           | otherwise = map (y:) nkMinus1 ++ nMinus1
+            where nkMinus1 = combinations' (n-1) (k'-1) ys
+                  nMinus1  = combinations' (n-1)  k'    ys
+
+
+    -- Same as combinations, but with the faculty of "picking up" computation
+    -- from a specific point, coming from elements being orderable, enumerable and bounded
+    -- NOTE: xs MUST be sorted for this to work
+    -- NOTE: combinationsFrom k xs startComb == dropWhile (/= startComb) (combinations k xs)
+    --          but much faster for large lists
+    -- NOTE: startComb (as it is, without rearrangements) HAS to be of length k
+    --          and also an element of the equivalent combinations result; error otherwise
+combinationsFrom :: (Eq a, Ord a) => Int -> [a] -> [a] -> [[a]]
+combinationsFrom k xs startComb = combinations' (length xs) k xs startComb
+  where combinations' n k' yys@(y:ys) ccs@(c:cs)
+          | k' == 0   = [[]]
+          | k' >= n   = [yys]
+          | null yys  = []
+          | null ccs  = combinations k' yys -- Faster than: map (y:) (nkMinus1 []) ++ nMinus1 []
+          | otherwise = case compare y c of
+                            LT -> nMinus1 ccs
+                            EQ -> map (y:) (nkMinus1 cs) ++ nMinus1 []
+                            GT -> map (y:) (nkMinus1 []) ++ nMinus1 []
             where nkMinus1 = combinations' (n-1) (k'-1) ys
                   nMinus1  = combinations' (n-1)  k'    ys
 
@@ -74,7 +133,7 @@ altSignsSum = snd . foldl add (1,0)
 
 
 
----- 2 - SORTING AND GROUPING FUNCTIONS ----------------------------------------
+---- 3 - SORTING AND GROUPING FUNCTIONS ----------------------------------------
 
     -- Descending and ascending list ordering function. Perfect for: sortBy XXX $ [[a]]
 descLength, ascLength :: [a] -> [a] -> Ordering
@@ -107,7 +166,7 @@ listUnZip xss@(h:_) = foldl separate (replicate (length h) []) xss
 
 
 
----- 3 - SET RELATED FUNCTIONS -------------------------------------------------
+---- 4 - SET RELATED FUNCTIONS -------------------------------------------------
 
     -- Check whether a set is a subset of a second set
 subsetOf, notSubsetOf :: (Eq a) => [a] -> [a] -> Bool
