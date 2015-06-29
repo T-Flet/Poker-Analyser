@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.1.1 - 27-28/06/2015
+--          1.2 - 28-29/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -15,6 +15,7 @@
 --       0 - Imports
 --       1 - HandTypeCounters Checks
 --       2 - Compiled Testing Shell Stuff
+--       3 - General Functions Stuff
 --
 
 
@@ -23,12 +24,13 @@
 
 --module QuickCheckStuff where
 
-import qualified GeneralFunctions as GF (combinations, choose)
+import qualified GeneralFunctions as GF (combinations, combinationsFrom, choose)
 import DataTypes
+import HandTypeCheckers (bestHandType)
 import HandCounters
 
 import Test.QuickCheck
-import Data.List (nub)
+import Data.List (nub, sort)
 import Data.Function (on)
 import GHC.Conc (numCapabilities)
 import Control.Parallel.Strategies
@@ -76,54 +78,58 @@ checkSingleHtProp ht ocs cs = propConds prop ocs cs
 
     -- Test the given HandTypes' poss functions against the possible combinations
     -- of 7 Cards from the given percentage (e.g. 0 means from the beginning)
-checkEverythingFor :: [HandType] -> Float -> IO ()
-checkEverythingFor hts perc = do
-    putStrLn $ "The starting combination number corresponding to the " ++ show perc ++ "% is: " ++ show startNum
+checkEverythingFor :: [HandType] -> [Card] -> Int -> IO ()
+checkEverythingFor hts startComb startNum = do
+    putStrLn $ "\nThe starting combination percentage corresponding to the number " ++ show startNum ++ " is " ++ show perc ++ "%"
     putStrLn "The testing will now happen in repeating parallel threads of N tests each"
-    putStr "What should the value of N be (100 might be good)? (Int): "
+    putStrLn "What should the value of N be (100 might be good)? (Int): "
     tTNStr <- getLine
-    let tTN = read tTnStr :: Int -- threadTestNumber
-    putStrLn "There will now be a pause without writing during each batch of testing threads"
+    let tTN = read tTNStr :: Int -- threadTestNumber
+    putStrLn "\nThere will now be a pause without writing during each batch of testing threads"
     putStrLn "Good luck!! XD"
 
-    testingBatch acn startNum tTN $ drop startNum allCombinations
-        where startNum = (floor ((perc  / 100.0) * acn)) :: Int
-              allCombinations = GF.combinations 7 allCards
-              acn = 52 `GF.choose` 7
+    let nhts h
+            | null hts  = enumFromThenTo RoyalFlush StraightFlush . hType $ bestHandType h
+            | otherwise = hts
+
+    testingBatch nhts allCombsNum startNum tTN combsFrom
+        where combsFrom = GF.combinationsFrom 7 allCards startComb
+              perc = percentage startNum allCombsNum
+              allCombsNum = 52 `GF.choose` 7
 
 
-testingBatch :: Int -> Int -> Int -> [[Card]] -> IO ()
-testingBatch acn currentNum tTN combs = do
+testingBatch :: ([Card] -> [HandType]) -> Int -> Int -> Int -> [[Card]] -> IO ()
+testingBatch nhts allCombsNum currentNum tTN combs = do
     let batchLength = numCapabilities * tTN
     let (thisBatch,newCombs) = splitAt batchLength combs
 
+    let curriedCheck h = checkHandTypes (nhts h) [] h
     let bools = map (null . curriedCheck) thisBatch `using` parListChunk tTN rdeepseq
-        where curriedCheck h = checkHandTypes nhts [] h
-                where nhts
-                        | null hts  = enumFromThenTo RoyalFlush StraightFlush . hType $ bestHandType hts
-                        | otherwise = hts
 
-    let percentage = ((((/) `on` fromIntegral) resNum acn) :: Float) * 100.0
-        l = length $ takeWhile (==True) bools
-        resNum = currentNum + l
-    in if l == batchLength
+    let l = length $ takeWhile (==True) bools
+    let resNum = currentNum + l
+    let newPerc = percentage resNum allCombsNum
+    if l == batchLength
         then do
-            putStrLn $ "OK up to " ++ show newNum ++ " : " ++ show percentage ++ "%"
-            testingBatch newNum tTN newCombs
-                where newNum = currentNum + batchLength
+            putStrLn $ "OK up to " ++ show resNum ++ " : " ++ show newPerc ++ "%"
+            testingBatch nhts allCombsNum resNum tTN newCombs
         else do
-                putStrLn $ "Stopped at first failure, which was hand number: " ++ show resNum
-                putStrLn $ "This means that " ++ show percentage ++ "% of the combinations were evaluated to be ok"
+                putStrLn $ "\nStopped at first failure, which was hand number: " ++ show resNum
+                putStrLn $ "This means that " ++ show newPerc ++ "% of the combinations were evaluated to be ok"
                 putStrLn "The problematic combination is:"
                 putStrLn . show $ combs!!l
                 putStrLn "Please send me this result"
+
+--- Helper Functions ---
+
+percentage x tot = ((((/) `on` fromIntegral) x tot) :: Float) * 100.0
 
 
 
 ---- 2 - COMPILED TESTING SHELL STUFF ------------------------------------------
 
-    -- Compile with: ghc -o PokerTesting -O QuickCheckStuff
-    -- Or, Multi Core: ghc -o PokerTestingNCores -O QuickCheckStuff -threaded +RTS -N
+    -- Compile with: ghc -o PokerTesting -O TestingStuff
+    -- Or, Multi Core: ghc -o PokerTestingNCores -O TestingStuff -threaded +RTS -N
     -- Then delete all the intermediate files in the repo
 
 main = do
@@ -149,12 +155,22 @@ checkInput = do
                     checkInput
         "ultimate" ->
                     do
-                        putStrLn "From what percentage of all combinations do you want to start testing?"
-                        putStrLn "(Note that the process will assume that all the combinations before that percentage check out)"
-                        putStr "(Float): "
-                        percStr <- getLine
-                        let perc = read percStr :: Float
-                        checkEverythingFor allHandTypes
+                        putStrLn "\nFrom what combination do you want to start testing?"
+                        putStrLn "(Both the actual combination and its number in the ordered list of all of them are required)"
+                        putStrLn "(Note that the process will assume that all the combinations before that check out)"
+                        putStrLn "[7 comma-separated 2-char \"strings\" representing cards] (or '[]' for beginning): "
+                        csStr <- getLine
+                        let Just startComb = sequence $ map toCard (read csStr :: [String])
+                        putStrLn "\nCombination Number (Int): "
+                        numStr <- getLine
+                        let startNum = read numStr :: Int
+                        putStrLn "\nDo you want this test to run only on the HandTypes better than or equal to what the Card combinations constitutes ('better')?"
+                        putStrLn "Or do you want to test all HandTypes for each combination ('all')? : "
+                        allOrBetter <- getLine
+                        let hts = case allOrBetter of
+                                    "all" -> allHandTypes
+                                    "better" -> []
+                        checkEverythingFor hts startComb startNum
         x
             | x `elem` map show allHandTypes -> do
                 quickCheckWith stdArgs { maxSuccess = 10000 } $ checkSingleHtProp (read x :: HandType)
@@ -165,4 +181,17 @@ checkInput = do
 
 
 
+---- 3 - GENERAL FUNCTIONS STUFF -----------------------------------------------
 
+    -- All combinationsFrom results are a tail of combinations results with the
+    -- same inputs
+    -- TEST: quickCheckWith stdArgs { maxSuccess = 10000 } checkCombinations
+checkCombinations xs startComb =
+    nub xs == xs ==>
+    nub startComb == startComb ==>
+        combsFrom == dropCombs
+    where combsFrom = GF.combinationsFrom k sxs ssc
+          dropCombs = dropWhile (/= ssc) $ GF.combinations k sxs
+          k = length startComb
+          sxs = sort xs
+          ssc = sort startComb

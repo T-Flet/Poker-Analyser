@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.3 - 27-28/06/2015
+--          1.4- 28-29/06/2015
 --
 --      Description:
 --          This package contains general functions which can be useful in many
@@ -83,29 +83,32 @@ n `choose` k = fromIntegral $ product [sk+1..sn] `div` product [1..sn-sk]
     -- NOTE: If k > length xs the result will always be 1
 combinations :: Int -> [a] -> [[a]]
 combinations k xs = combinations' (length xs) k xs
-  where combinations' n k' yys@(y:ys)
+  where combinations' _ _  [] = []
+        combinations' n k' yys@(y:ys)
           | k' == 0   = [[]]
           | k' >= n   = [yys]
-          | null yys  = []
           | otherwise = map (y:) nkMinus1 ++ nMinus1
             where nkMinus1 = combinations' (n-1) (k'-1) ys
                   nMinus1  = combinations' (n-1)  k'    ys
 
 
     -- Same as combinations, but with the faculty of "picking up" computation
-    -- from a specific point, coming from elements being orderable, enumerable and bounded
+    -- from a specific point
     -- NOTE: xs MUST be sorted for this to work
     -- NOTE: combinationsFrom k xs startComb == dropWhile (/= startComb) (combinations k xs)
     --          but much faster for large lists
-    -- NOTE: startComb (as it is, without rearrangements) HAS to be of length k
-    --          and also an element of the equivalent combinations result; error otherwise
+    -- NOTE: startComb (as it is, without rearrangements) SHOULD be of length k
+    --          and also an element of the equivalent combinations result;
+    --          if not, only the beginning k elements will be considered for the
+    --          process, and the list will start from the first combination with
+    --          elements greater than or equal to those k ones.
 combinationsFrom :: (Eq a, Ord a) => Int -> [a] -> [a] -> [[a]]
 combinationsFrom k xs startComb = combinations' (length xs) k xs startComb
-  where combinations' n k' yys@(y:ys) ccs@(c:cs)
+  where combinations' _ _  []         _  = []
+        combinations' _ k'  yys       [] = combinations k' yys  -- Faster than: map (y:) (nkMinus1 []) ++ nMinus1 []
+        combinations' n k' yys@(y:ys) ccs@(c:cs)
           | k' == 0   = [[]]
           | k' >= n   = [yys]
-          | null yys  = []
-          | null ccs  = combinations k' yys -- Faster than: map (y:) (nkMinus1 []) ++ nMinus1 []
           | otherwise = case compare y c of
                             LT -> nMinus1 ccs
                             EQ -> map (y:) (nkMinus1 cs) ++ nMinus1 []
@@ -182,5 +185,3 @@ noSupersets ascXs = noSupersets' . smallestLength $ nub ascXs
           noSupersets' ([],[]) = []
           noSupersets' (small,others) = (++) small . noSupersets' $ smallestLength newOthers
             where newOthers = filter (\o-> not $ any (`subsetOf` o) small) others
-
-

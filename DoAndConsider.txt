@@ -24,17 +24,10 @@
 
     REAL PLAN:
         FIX THIS IN NEW VERSION:
-let Just cs = sequence $ map toCard ["1d", "9d", "8d", "7d"]
-checkAllHandTypes [] cs
-
-
-JUST SOLVED:
-            [(FullHouse,[FourOfAKind]),(Straight,[FourOfAKind])]
-            [(Straight,[FullHouse])]
-            [(StraightFlush,[Flush])]
-            [(FourOfAKind,[StraightFlush])]
-
-    COMPARE OLD AND NEW possFullHouse!!!!!!!!!!!!!!!!!!!!!!!!
+let curriedCheck h = checkAllHandTypes [] h
+curriedCheck $ fromSV [Spades] [Two .. Eight]
+> [(RoyalFlush,[StraightFlush]),(FullHouse,[StraightFlush])]
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
                 (NEW PROBLEMS ARISE BECAUSE THE COMPLETERS LONGER THAN THE CARDS LEFT
                 TO DRAW ARE NOW TESTED AS WELL)
