@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.6 - 25-26/05/2015
+--          0.7 - 29/05/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -27,7 +27,7 @@ module HandTypeCheckers where
 import GeneralFunctions (descLength, groupBy', subsetOf)
 import DataTypes
 
-import Data.List (sort, sortBy, group, (\\))
+import Data.List (sort, sortBy, maximumBy, group, (\\))
 import Data.Function (on)
 
 
@@ -74,29 +74,39 @@ whatIs cs = concat [rF, sF, fK, fH, fl, st, tK, tP, oP, hC]
 
 ---- 2 - SINGLE HANDTYPE CHECKERS ----------------------------------------------
 
-    -- Return the Value of the highest card and the 5 highest cards
-    -- This will always be true; the Maybe is there just for consistency
-isHighCard :: [Card] -> Maybe (Value,[Card])
-isHighCard = Just . vAndFive . sort
-    where vAndFive scs = (value $ last scs, take 5 scs)
+    -- Returns the Suit of the RoyalFlush and its constituting cards
+    -- (If Suit hierarchy were implemented, it could only be Hearts)
+isRoyalFlush :: [Card] -> Maybe (Suit,[Card])
+isRoyalFlush cs = case isStraightFlush cs of
+    Just ((s,Ace),ncs) -> Just (s, ncs)
+    _                  -> Nothing
+
+
+    -- Returns the Suit and the Value of the highest card in the StraightFlush and its constituting cards
+    -- Does not simply return a Card (which has the same fields) for pattern matching's sake
+isStraightFlush :: [Card] -> Maybe ((Suit,Value),[Card])
+isStraightFlush cs
+    | null flushes = Nothing
+    | null straightFlushes = Nothing
+    | otherwise = Just $ maximumBy (compare `on` (snd . fst)) straightFlushes
+        where straightFlushes = foldr getStrFl [] flushes
+              getStrFl fl sfls = case isStraight fl of
+                Just (v,sfcs) -> ((suit $ head fl, v), sfcs):sfls
+                Nothing       -> sfls
+              flushes = filter ((>=5) . length) $ suitDescGroups cs
 
 
     -- Return the Value of the N-plet and its 5 constituting cards
-isOnePair, isThreeOfAKind, isFourOfAKind :: [Card] -> Maybe (Value,[Card])
-isOnePair      = isNplet 2
-isThreeOfAKind = isNplet 3
+isFourOfAKind, isThreeOfAKind, isOnePair :: [Card] -> Maybe (Value,[Card])
 isFourOfAKind  = isNplet 4
+isThreeOfAKind = isNplet 3
+isOnePair      = isNplet 2
 
 
     -- Return the Values of the N-Plets in descending order and their 5 constituting cards
-isTwoPair, isFullHouse :: [Card] -> Maybe ([Value],[Card])
-isTwoPair   = is2Nplet 2 2
+isFullHouse, isTwoPair :: [Card] -> Maybe ([Value],[Card])
 isFullHouse = is2Nplet 3 2
-
-
-    -- Returns the value of the highest card in the Straight and its constituting cards
-isStraight :: [Card] -> Maybe (Value,[Card])
-isStraight cs = isLenType 5 value $ inOrder cs
+isTwoPair   = is2Nplet 2 2
 
 
     -- Returns the Suit of the Flush and its constituting cards
@@ -104,37 +114,22 @@ isFlush :: [Card] -> Maybe (Suit,[Card])
 isFlush cs = isLenType 5 suit $ suitDescGroups cs
 
 
-    -- Returns the Suit and the Value of the highest card in the StraightFlush and its constituting cards
-    -- Does not simply return a Card (which has the same fields) for pattern matching's sake
-    -- NOTE: The first pattern match could have also been the real isStraight,
-    --       but inOrder would have been applied twice (not as efficient)
-isStraightFlush :: [Card] -> Maybe ((Suit,Value),[Card])
-isStraightFlush cs
-    | Just (sui,fcs) <- isFlush', Just (val,scs) <- isStraight' fcs = together val scs sui
-    | otherwise = Nothing
-        where together val scs sui
-                | okCs `subsetOf` cs = Just ((sui,val),okCs)
-                | otherwise          = Nothing
-                    where okCs = fromSV [sui] $ map value scs
-                -- The reason for the above function instead of checking that
-                -- the returned sets of cards are the same is that the Straight
-                -- cards could include an element which is not of the same Suit
-                -- even though the one that is is present in cs
-              isFlush'
-                  | null sdcs       = Nothing
-                  | length hcs >= 5 = Just (suit $ head hcs, hcs)
-                  | otherwise       = Nothing
-                      where hcs = head sdcs
-                            sdcs = suitDescGroups cs
-              isStraight' = isLenType 5 value . inOrder
+    -- Returns the value of the highest card in the Straight and its constituting cards
+isStraight :: [Card] -> Maybe (Value,[Card])
+isStraight cs = isLenType 5 value inOrderAndOk
+    where inOrderAndOk = sortBy ((invCompare) `on` (value . head)) . filter ((>=5) . length) $ inOrder cs
+            -- More efficient than a reverse after the sort
+          invCompare a b = case compare a b of
+            LT -> GT
+            EQ -> EQ
+            GT -> LT
 
 
-    -- Returns the Suit of the RoyalFlush and its constituting cards
-    -- (If Suit hierarchy were implemented, it could only be Hearts)
-isRoyalFlush :: [Card] -> Maybe (Suit,[Card])
-isRoyalFlush cs = case isStraightFlush cs of
-    Just ((s,Ace),ncs) -> Just (s, ncs)
-    _                  -> Nothing
+    -- Return the Value of the highest card and the 5 highest cards
+    -- This will always be true; the Maybe is there just for consistency
+isHighCard :: [Card] -> Maybe (Value,[Card])
+isHighCard = Just . vAndFive . sort
+    where vAndFive scs = (value $ last scs, take 5 scs)
 
 
 

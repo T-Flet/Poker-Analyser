@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.1 - 25/06/2015
+--          1.2 - 25/06/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -125,6 +125,18 @@ toCard uVS
               sui = case s of
                     's' -> Spades   ; 'c' -> Clubs ;
                     'd' -> Diamonds ; 'h' -> Hearts
+
+    -- Get a 2-Char String from a Card
+fromCard :: Card -> String
+fromCard (Card v s) = [vStr, sStr]
+    where vStr = case v of
+                    Two -> '2' ; Three -> '3' ; Four  -> '4' ; Five -> '5' ;
+                    Six -> '6' ; Seven -> '7' ; Eight -> '8' ; Nine -> '9' ;
+                    Ten -> '1' ; Jack  -> 'j' ; Queen -> 'q' ; King -> 'k' ;
+                    Ace -> 'a'
+          sStr = case s of
+                    Spades   -> 's' ; Clubs  -> 'c' ;
+                    Diamonds -> 'd' ; Hearts -> 'h'
 
 
     -- Group cards by value and by suit and sort the groups,

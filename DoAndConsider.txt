@@ -24,13 +24,20 @@
 
     REAL PLAN:
         FIX THIS IN NEW VERSION:
-let curriedCheck h = checkAllHandTypes [] h
-curriedCheck $ fromSV [Spades] [Two .. Eight]
+let cs = [Card Two Spades, Card Three Spades, Card Four Spades, Card Five Spades, Card Six Spades, Card Two Clubs, Card Two Diamonds]
+checkAllHandTypes [] cs
+>
+
+
+
+JUST SOLVED:
+checkAllHandTypes [] $ fromSV [Spades] [Two .. Eight]
 > [(RoyalFlush,[StraightFlush]),(FullHouse,[StraightFlush])]
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
                 (NEW PROBLEMS ARISE BECAUSE THE COMPLETERS LONGER THAN THE CARDS LEFT
                 TO DRAW ARE NOW TESTED AS WELL)
+                (AND BECAUSE THE CHECKS FOR BETTER HandTypes IN cs HAVE BEEN COMMENTED OUT)
 
 
         REVISIT THE noSupersets APPROACH TO BETTER PROBABILITIES, DOING IT DURING A FOLD,

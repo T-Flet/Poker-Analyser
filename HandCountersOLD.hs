@@ -1,3 +1,4 @@
+
 ---- Poker Analyser Hand Counting Related Functions
 --
 --      Author:
@@ -57,6 +58,10 @@ countBetterHandTypes mHt tcns d ocs cs = countHandTypes hts tcns d ocs cs
           bht = case mHt of
             Just ht -> ht
             Nothing -> hType $ bestHandType cs
+
+    -- Return all HandTypes' counts in the reasonable order (see below)
+countAllHandTypes :: [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
+countAllHandTypes = countHandTypes (reverse allHandTypes)
 
 
     -- Return the HandTypeCounts for each given HandType for each given Target
@@ -120,20 +125,14 @@ getPossHtFunc ht = case ht of
     -- just on the table) and the cards in question yield the necessary cards
     -- to draw in order to get that HandType
 
-    -- NOTE: These functions are not to be called directly, but through one of
-    -- the General Ones in the above section, as they will not check their input
-    -- for the presence of better HandTypes than their own
-        -- NOTE: Some of the functions have a commented out part at their
-        -- beginning which operated some of those checks
-
-    -- NOTE: Each function avoids counting instances of their HandType which
+    -- Note: each function avoids counting instances of their HandType which
     -- also qualify as a different one (be it higher or lower)
     -- Also, if an instance of its HandType is already present, each function
     -- returns all the better or equal ones, excluding the ones which are worth
     -- the same but different (i.e. the present instane and all the strictly
     -- better ones; think of Straights of different sets of Suits)
 
-    -- NOTE: Most of these functions break down with unreasonable input (like
+    -- Note: most of these functions break down with unreasonable input (like
     -- lists of identical cards, which are not possible)
 
 
@@ -158,13 +157,12 @@ possFourOfAKind ocs cs = getCompleters FourOfAKind aphs ocs cs
 
 
 possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
-    where aphs = filter (\h-> all (`notSubsetOf` h) sfCmps) phs
---          aphs
---                -- No FourOfAKind already present
---            | any ((>=4) . length) $ valueGroups cs = []
---                -- No StraightFlush already present
---            | isJust $ isStraightFlush cs           = []
---            | otherwise = filter (\h-> all (`notSubsetOf` h) sfCmps) phs
+    where aphs
+                -- No FourOfAKind already present
+            | any ((>=4) . length) $ valueGroups cs = []
+                -- No StraightFlush already present
+            | isJust $ isStraightFlush cs           = []
+            | otherwise = filter (\h-> all (`notSubsetOf` h) sfCmps) phs
             -- 2-Card-Max Straight (and Royal) Flush completers
           sfCmps = concat . map getStrVs $ valuesPerSuit cs
           getStrVs (s,vs) = map (map (\v-> Card v s)) . filter (((&&) <$> (<=2) <*> (/=0)) . length) $ map (\\vs) straightValues
@@ -188,13 +186,16 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
 possFlush ocs cs = getCompleters Flush aphs ocs cs
     where aphs = filter (noFOAKsOrFullHouses . (union cs)) phs
 --                    `using` parListChunk 100 rdeepseq
+
 --          phs = withStrategy (parListChunk 100 rdeepseq) $
           phs = case filter ((>=5) . length) $ suitGroups cs of
             [] -> [fromSV [s] vs | vs <- apvs, s <- allSuits]
             fl -> [fromSV [s] vs | vs <- filter better apvs, let s = suit . head $ head fl]
                 where better = all (>= (minimum . map value $ head fl))
 
-            -- Remove SOME FullHouses and FourOfAKinds (faster than noFOAKsOrFullHouses)
+            -- Remove some FullHouses and FourOfAKinds
+
+            -- NEED TO REMOVE ALL THE OTHER ONES (PROBABLY AT A Card (AND NOT JUST Value STAGE))
           apvs = filter ((>2) . length . group . sort) pvs
 --                    `using` parListChunk 100 rdeepseq
             -- Note that each combination below is sorted by ascending Value
@@ -212,18 +213,18 @@ possFlush ocs cs = getCompleters Flush aphs ocs cs
 
 
 possStraight ocs cs = getCompleters Straight aphs ocs cs
-    where aphs = filter (\h-> all (`notSubsetOf` h) npcss) phs'
---                    `using` parListChunk 100 rdeepseq
---          aphs    -- phs was the above version of aphs
---            | not $ noFOAKsOrFullHouses cs = []
---                -- Any Straight which is not a StraightFlush present
---            | straightButNotFlush = []:phs
---            | otherwise           = phs
---          straightButNotFlush = not (null strVss) && not sameSuits
---            where strVss = filter (`subsetOf` csvs) straightValues
---                  sameSuits = any (\s-> any (sameSuit s) strVss) allSuits
---                  sameSuit s vs = (fromSV [s] vs) `subsetOf` cs
+    where aphs
+            | not $ noFOAKsOrFullHouses cs = []
+                -- Any Straight which is not a StraightFlush present
+            | straightButNotFlush = []:phs
+            | otherwise           = phs
+          straightButNotFlush = not (null strVss) && not sameSuits
+            where strVss = filter (`subsetOf` csvs) straightValues
+                  sameSuits = any (\s-> any (sameSuit s) strVss) allSuits
+                  sameSuit s vs = (fromSV [s] vs) `subsetOf` cs
 
+          phs = filter (\h-> all (`notSubsetOf` h) npcss) phs'
+--                    `using` parListChunk 100 rdeepseq
             -- Remove all indirect StraightFlushes: when a Straight
             -- is acheived, but some adjacent cards create a StraightFlush)
           npcss = map (\\cs) . nub . concat $ map strFluCs cs
@@ -253,7 +254,7 @@ possThreeOfAKind ocs cs = getCompleters ThreeOfAKind aphs ocs cs
     where aphs = case length nPletsVgs of
             x | x > 1  -> []
             1 -> case length hnpvgs of
---                y | y > 3 -> []
+                y | y > 3 -> []
                 3 -> nPletsVgs
                     -- The below case can only be 2, but wildcard just in case
                 _ -> [makeCs [v,v,v] (sort (s:ss)) | s <- allSuits \\ ss, noBetterHts s]
@@ -275,16 +276,15 @@ possThreeOfAKind ocs cs = getCompleters ThreeOfAKind aphs ocs cs
 
 
 possTwoPair ocs cs = getCompleters TwoPair aphs ocs cs
-    where aphs = case bestNplets of
+    where aphs
+                -- Any Explicit Three or Four OfAKind present
+            | any ((>=3) . length) $ valueGroups cs = []
+            | otherwise = case bestNplets of
                 [[c1,c2],[c3,c4]]:_ -> eqOrBetter (value c3) phs
                 _                   -> phs
           bestNplets = groupBy ((==) `on` length) $ valueDescGroups cs
             -- Notice value c3 < value c1
           eqOrBetter v = filter (all ((>=v) . value))
---          aphs
---                -- Any Explicit Three or Four OfAKind present
---            | any ((>=3) . length) $ valueGroups cs = []
---            | otherwise =     -- the above version of aphs
 
           phs = [ncs | [v1,v2] <- apvs, ss1 <- apss, ss2 <- apss, let ncs = fromVS [v1] ss1 ++ fromVS [v2] ss2, noBetterHts ncs v1 v2 ss1 ss2]
 --                    `using` parListChunk 100 rdeepseq
@@ -301,8 +301,8 @@ possTwoPair ocs cs = getCompleters TwoPair aphs ocs cs
 
 possOnePair ocs cs = getCompleters OnePair aphs ocs cs
     where aphs
---                -- Any Straight Present
---            | any (`subsetOf` csvs) straightValues          = []
+                -- Any Straight Present
+            | any (`subsetOf` csvs) straightValues          = []
             | null nPletsVgs                                = csvshs ++ ncsvshs
             | length (head bNPls) == 2 && length bNPls == 1 = bNPls
             | otherwise                                     = []
@@ -321,12 +321,12 @@ possOnePair ocs cs = getCompleters OnePair aphs ocs cs
 possHighCard ocs cs = getCompleters HighCard aphs ocs cs
     where aphs = map (:[]) apcs
           apcs
---                -- Any Straight Present
---            | any (`subsetOf` csvs) stpvs          = []
---                -- Any Flush present
---            | any ((>4) . length) $ suitGroups cs  = []
---                -- Any nPlet present
---            | any ((>1) . length) $ valueGroups cs = []
+                -- Any Straight Present
+            | any (`subsetOf` csvs) stpvs          = []
+                -- Any Flush present
+            | any ((>4) . length) $ suitGroups cs  = []
+                -- Any nPlet present
+            | any ((>1) . length) $ valueGroups cs = []
             | null cs   = allCards
                 -- Otherwise just trim the possible Suits and Values sets
             | otherwise = maximum cs : [Card v s | v <- apvs, s <- apss]
@@ -334,7 +334,6 @@ possHighCard ocs cs = getCompleters HighCard aphs ocs cs
           apvs = filter (>= maximum csvs) . (\\) allValues $ union straightVs nPletsVs
           apss = allSuits \\ flushSs
 
-            -- For clarity
           nPletsVs = csvs
 
           (fss, svs)
@@ -421,21 +420,21 @@ cardsValues cs = nub $ map value cs
 checkBetterHandTypes :: [Card] -> [Card] -> [(HandType, [HandType])]
 checkBetterHandTypes ocs cs = checkHandTypes hts ocs cs
     where hts = enumFromThenTo RoyalFlush StraightFlush . hType $ bestHandType cs
-    -- Parallel Version
-checkBetterHandTypesPar :: [Card] -> [Card] -> [(HandType, [HandType])]
-checkBetterHandTypesPar ocs cs = checkBetterHandTypes ocs cs `using` parList rdeepseq
+
+
+    -- Check (as described in checkHtCounts) all the HandTypes
+checkAllHandTypes :: [Card] -> [Card] -> [(HandType, [HandType])]
+checkAllHandTypes = checkHandTypes (reverse allHandTypes)
 
 
     -- Test whether any of the count functions of the given HandTypes yields a
     -- HandType which is not its own. In particular, lookout for ones higher
     -- than it. Also, count the instances of each
 checkHandTypes :: [HandType] -> [Card] -> [Card] -> [(HandType, [HandType])]
-checkHandTypes hts ocs cs = filter (not . null . snd) $ map (bad . getChecks) hts
-    where bad (ht,chts) = (ht, nub . sort $ filter (/= ht) chts)
+checkHandTypes hts ocs cs = list `using` parList rdeepseq
+    where list = filter (not . null . snd) $ map (bad . getChecks) hts
+          bad (ht,chts) = (ht, nub . sort $ filter (/= ht) chts)
           getChecks ht = (ht, checkHtc ht ocs cs)
-    -- Parallel Version
-checkHandTypesPar :: [HandType] -> [Card] -> [Card] -> [(HandType, [HandType])]
-checkHandTypesPar hts ocs cs = checkHandTypes hts ocs cs `using` parList rdeepseq
 
 
     -- Return all the completers which yield different HandTypes than the required one
