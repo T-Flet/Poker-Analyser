@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.2 - 25/06/2015
+--          1.3 - 16-17/07/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -50,14 +50,14 @@ data Card = Card {value :: Value, suit :: Suit}
                 deriving (Eq, Ord)
 instance NFData Card
 instance Show Card where
-    show c = (show $ value c) ++ " of " ++ (show $ suit c)
+    show c = show (value c) ++ " of " ++ show (suit c)
 instance Enum Card where
     toEnum i   = Card (toEnum (i`mod`13) :: Value) (toEnum (i`div`13) :: Suit)
-    fromEnum c = (fromEnum $ value c) + ((*13) . fromEnum $ suit c)
+    fromEnum c = fromEnum (value c) + ((*13) . fromEnum $ suit c)
         -- This enumFrom is in deck order (suit first), while actual card
         -- comparison is by value first
     enumFrom c = dropWhile (<c) . concat $
-        fromSVG (enumFrom $ (minBound :: Suit)) (enumFrom $ (minBound :: Value))
+        fromSVG (enumFrom (minBound :: Suit)) (enumFrom (minBound :: Value))
 -- All the other Enum functions are automatically derived from toEnum and fromEnum
 
 
@@ -98,12 +98,12 @@ fromVS vs ss = [Card v s | v <- vs, s <- ss]
 
     -- Generate a list of Cards by zipping Values and Suits
 makeCs :: [Value] -> [Suit] -> [Card]
-makeCs vs ss = map (\(v,s)-> Card v s) $ zip vs ss
+makeCs = zipWith Card
 
 
     -- Sort cards by suit first (as in deck order)
 sortBySuit :: [Card] -> [Card]
-sortBySuit cs = sortBy cmpSui cs
+sortBySuit = sortBy cmpSui
     where cmpSui c1 c2 = case (compare `on` suit) c1 c2 of
             EQ -> (compare `on` value) c1 c2
             x  -> x
@@ -285,8 +285,8 @@ data Frame = Frame {action :: Action, playersNum :: Int, userId :: Int,
                 deriving (Eq)
                     -- The actual player is the first (0) in players list
 instance Show Frame where
-    show fr = unlines $ map (\sf-> (fst sf) ++ ((snd sf) fr)) funcs
-        where funcs :: [(String,(Frame -> String))]
+    show fr = unlines $ map (\sf-> fst sf ++ snd sf fr) funcs
+        where funcs :: [(String,Frame -> String)]
               funcs = [ ("Current action: ",    show . action),
                         ("Players Number: ",    show . playersNum),
                         ("User Number: ",       show . userId),
@@ -324,7 +324,7 @@ initialPlayer nu = Player nu 0 0 Idle [] (Hand HighCard (HV Two) 0 [])
     -- Generate a Player by providing only the fields which change
     -- with respect to the previous one
 newPlayer :: Player -> [(String, PlayerField)] -> Player
-newPlayer pl fieldList = (Player no ba op st cs hh)
+newPlayer pl fieldList = Player no ba op st cs hh
     where no = newField num     fromPI "num"
           ba = newField balance fromPI "balance"
           op = newField onPlate fromPI "onPlate"
@@ -347,12 +347,12 @@ initialDeck = Deck 52 (replicate 13 4) (replicate 4 13)
     -- Generate a new Deck by providing the cards which have been taken out from
     -- the previous one
 newDeck :: Deck -> [Card] -> Deck
-newDeck d cs = foldr takeOut d cs
+newDeck = foldr takeOut
     where takeOut (Card v s) (Deck ci vsi ssi) = Deck nCi nVsi nSsi
             where nCi = ci - 1
-                  nVsi = (init bvs) ++ ((last bvs) - 1):avs
+                  nVsi = init bvs ++ (last bvs - 1):avs
                   (bvs,avs) = splitAt (1 + fromEnum v) vsi
-                  nSsi = (init bss) ++ ((last bss) - 1):ass
+                  nSsi = init bss ++ (last bss - 1):ass
                   (bss,ass) = splitAt (1 + fromEnum s) ssi
 
 
@@ -379,7 +379,7 @@ initialState = [Frame GameStart 0 0 0 initialDeck [] 0 []]
     -- Add a new Frame to the State by providing only the fields which change
     -- with respect to the previous one
 addFrame :: State -> [(String, FrameField)] -> State
-addFrame s@(f:_) fieldList = (Frame act plN usN dea dCN tab plt pls):s
+addFrame s@(f:_) fieldList = Frame act plN usN dea dCN tab plt pls : s
     where act = newField action     fromFA "action"
           plN = newField playersNum fromFI "playersNum"
           usN = newField userId     fromFI "userId"
@@ -392,6 +392,3 @@ addFrame s@(f:_) fieldList = (Frame act plN usN dea dCN tab plt pls):s
           newField :: (Frame -> a) -> (FrameField -> a) -> String -> a
           newField field extractor key =
                 maybe (field f) extractor $ lookup key fieldList
-
-
-

@@ -23,37 +23,15 @@
 ---- 1 - TO DO -----------------------------------------------------------------
 
     REAL PLAN:
-        FIX THIS IN NEW VERSION:
-let cs = [Card Two Spades, Card Three Spades, Card Four Spades, Card Five Spades, Card Six Spades, Card Two Clubs, Card Two Diamonds]
-checkAllHandTypes [] cs
->
-
-
-
-JUST SOLVED:
-checkAllHandTypes [] $ fromSV [Spades] [Two .. Eight]
-> [(RoyalFlush,[StraightFlush]),(FullHouse,[StraightFlush])]
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-                (NEW PROBLEMS ARISE BECAUSE THE COMPLETERS LONGER THAN THE CARDS LEFT
-                TO DRAW ARE NOW TESTED AS WELL)
-                (AND BECAUSE THE CHECKS FOR BETTER HandTypes IN cs HAVE BEEN COMMENTED OUT)
+        (NEW PROBLEMS ARISE BECAUSE THE COMPLETERS LONGER THAN THE CARDS LEFT
+        TO DRAW ARE NOW TESTED AS WELL)
+        (AND BECAUSE THE CHECKS FOR BETTER HandTypes IN cs HAVE BEEN COMMENTED OUT)
 
 
         REVISIT THE noSupersets APPROACH TO BETTER PROBABILITIES, DOING IT DURING A FOLD,
         IN ORDER TO REDUCE THE NUMBER OF ELEMENTS CHECKED EVERY TIME
-            NOTE THAT INTEGRATING THIS WILL ALSO ALLOW THE REMOVAL OF MANY CHECKS AND FILTERS
+            NOTE THAT INTEGRATING THIS MIGHT ALSO ALLOW THE REMOVAL OF MANY CHECKS AND FILTERS
             IN MANY poss FUNCTIONS THEMSELVES
-                PERHAPS MAKE A SEPARATE VERSION OF SUPER-OPTIMISED (NO CHECKS ON cs FOR BETTER HTS)
-                poss FUNCTIONS TO BE USED ONLY WITH countBetter...
-                    OOORRRRR
-                    PERHAPS MOVE THOSE TESTS IN SEPARATE FUNCTIONS AND CALL THEM ONLY WHEN USING
-                    countAllHandTypes, AND NOT WITH countBetterHandTypes
-                        PERHAPS ADD STANDARD CHECKS FOR ALL BETTER HTS IN THE UNION OF compelters
-                        WITH cs AFTER EACH poss FUNCTION (CASUS: ["1d", "9d", "8d", "7d"] ++
-                        EITHER [[Six of Spades,Six of Clubs,Six of Diamonds,Six of Hearts],
-                        [Jack of Spades,Jack of Clubs,Jack of Diamonds,Jack of Hearts] YIELDS
-                        A StraightFlush INSTEAD OF A FourOfAKind])
 
             PERHAPS MAKE A NEW (==) FOR CARD LISTS, CHECKING THAT THE LENGTH IS THE SAME AND
             THAT EACH ELEMENT OF ONE IS IN THE OTHER
@@ -63,12 +41,6 @@ checkAllHandTypes [] $ fromSV [Spades] [Two .. Eight]
         OOOOOOOOOOORRRRR
             PLAN TO INCLUDE THE APPROPRIATE ABSTRACT ONES IN THE COMMON PART
             OF ALL CONCRETE ONES
-
-        PARALLELISE STUFF, ESPECIALLY IN EACH poss FUNCTION
-            NOTE: COMMENTED OUT AT PRESENT; AWAITING TEST FOR WORTHINESS OF OVERHEAD
-
-        AT SOME STAGE DO THE REAL TEST/CHECK: NOT A quickCheck, BUT ON ALL POSSIBLE HANDS
-
 
     POSSIBLE PATHS:
         - FIGURE OUT A WAY TO GET NICE PROBABILITIES FROM THE DATA ALREADY PRODUCED

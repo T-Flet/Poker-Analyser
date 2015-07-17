@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.3 - 29/06/2015
+--          1.4 - 16-17/07/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -124,17 +124,17 @@ testingBatch allCombsNum currentNum tTN combs = do
             putStrLn $ "\nStopped at first failure, which was hand number: " ++ show resNum
             putStrLn $ "This means that " ++ show newPerc ++ "% of the combinations were evaluated to be ok"
             putStrLn "The problematic combination is:"
-            putStrLn . show $ combs!!l
+            print $ combs!!l
             putStrLn "Please send me this result"
 
 --- Helper Functions ---
 
-percentage x tot = ((((/) `on` fromIntegral) x tot) :: Float) * 100.0
+percentage x tot = (((/) `on` fromIntegral) x tot :: Float) * 100.0
 
 
 halfWayCs = ["6s", "ks", "kc", "2d", "5h", "6h"]
 indexCs :: Int -> [Card]
-indexCs ind = (GF.combinations 7 allCards)!!ind
+indexCs ind = GF.combinations 7 allCards !!ind
 combsIndex :: Float -> Int
 combsIndex perc = round (perc * fromIntegral (52 `GF.choose` 7))
 
@@ -153,7 +153,7 @@ main = do
 
 checkInput = do
     putStrLn "\nPlease enter either 'quit', 'normal', 'ULTIMATE' or any single HandType's name: "
-    putStrLn $ show allHandTypes
+    print allHandTypes
                 -- Substituted 'all' and 'better' with 'normal' in above print
 --    putStrLn "'all' and 'better' are referred to the HandType constituted by the given cards"
     putStrLn "Note that ULTIMATE will take a long time (a little for each of the 133784560 (52 `choose` 7) sets of cards)"
@@ -190,7 +190,7 @@ checkInput = do
                                  putStrLn "(Both the actual combination and its number in the ordered list of all of them are required)"
                                  putStrLn "[7 comma-separated 2-char \"strings\" representing cards] (or '[]' for beginning): "
                                  csStr <- getLine
-                                 let Just startComb = sequence $ map toCard (read csStr :: [String])
+                                 let Just startComb = mapM toCard (read csStr :: [String])
                                  putStrLn "\nCombination Number (Int): "
                                  numStr <- getLine
                                  let startNum = read numStr :: Int

@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.4- 28-29/06/2015
+--          1.5 - 16-17/07/2015
 --
 --      Description:
 --          This package contains general functions which can be useful in many
@@ -34,14 +34,14 @@ import Data.Char (chr, ord, isDigit, isUpper, isLower)
 
     -- Base b digits of decimal v
 toBase :: Int -> Int -> [Int]
-toBase b v = toBase' [] v
+toBase b = toBase' []
     where toBase' a 0 = a
           toBase' a v = toBase' (r:a) q
             where (q,r) = v `divMod` b
 
     -- Decimal Int from base b digits ds
 fromBase :: Int -> [Int] -> Int
-fromBase b ds = foldl' (\n k -> n * b + k) 0 ds
+fromBase b = foldl' (\n k -> n * b + k) 0
 
 
     -- Note: The following pair of functions only works for bases up to 10+27
@@ -103,7 +103,7 @@ combinations k xs = combinations' (length xs) k xs
     --          process, and the list will start from the first combination with
     --          elements greater than or equal to those k ones.
 combinationsFrom :: (Eq a, Ord a) => Int -> [a] -> [a] -> [[a]]
-combinationsFrom k xs startComb = combinations' (length xs) k xs startComb
+combinationsFrom k xs = combinations' (length xs) k xs
   where combinations' _ _  []         _  = []
         combinations' _ k'  yys       [] = combinations k' yys  -- Faster than: map (y:) (nkMinus1 []) ++ nMinus1 []
         combinations' n k' yys@(y:ys) ccs@(c:cs)
@@ -121,8 +121,8 @@ combinationsFrom k xs startComb = combinations' (length xs) k xs startComb
     -- Note: This was originally supposed to be an implementation of the
     -- Inclusion-Exclusion Principle for infinite conditions over any list, but
     -- any real implementation of it would be less efficient than this
-inclExclPrinc :: [(a -> Bool)] -> [a] -> Int
-inclExclPrinc conds xs = foldl anyApply 0 xs
+inclExclPrinc :: [a -> Bool] -> [a] -> Int
+inclExclPrinc conds = foldl anyApply 0
     where anyApply count x
             | any ($x) conds = count + 1
             | otherwise      = count
@@ -140,8 +140,8 @@ altSignsSum = snd . foldl add (1,0)
 
     -- Descending and ascending list ordering function. Perfect for: sortBy XXX $ [[a]]
 descLength, ascLength :: [a] -> [a] -> Ordering
-descLength l1 l2 = (compare `on` length) l2 l1
-ascLength  l1 l2 = (compare `on` length) l1 l2
+descLength = flip ascLength
+ascLength = compare `on` length
 
 
     -- Stricter version of groupBy in the sense that does not assume that the
@@ -181,7 +181,7 @@ a `notSubsetOf` b = any (`notElem` b) a
 noSupersets :: Eq a => [[a]] -> [[a]]
 noSupersets ascXs = noSupersets' . smallestLength $ nub ascXs
     where smallestLength [] = ([],[])
-          smallestLength xxs@(x:xs) = span ((== length x) . length) xxs
+          smallestLength xxs@(x:_) = span ((== length x) . length) xxs
           noSupersets' ([],[]) = []
           noSupersets' (small,others) = (++) small . noSupersets' $ smallestLength newOthers
             where newOthers = filter (\o-> not $ any (`subsetOf` o) small) others

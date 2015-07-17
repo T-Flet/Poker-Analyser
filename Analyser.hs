@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.0 - 09-10/06/2015
+--          1.1 - 16-17/07/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -61,8 +61,8 @@ gameShell state = do
     if cmd == "q"
         then do
             putStrLn "Game Over"
-            putStrLn $ "The players' balances are " ++ (show $ balances state)
-            putStrLn $ "Players " ++ (show $ inTheLead state) ++ " win"
+            putStrLn $ "The players' balances are " ++ show (balances state)
+            putStrLn $ "Players " ++ show (inTheLead state) ++ " win"
         else do
             let (newState, msg) = shellCommand state cmd
             putStrLn msg
@@ -136,10 +136,10 @@ shellCommand s cmd = case cmd of
                 (s, show $ balances s)
         -- Number of actions or frames
     "fa" ->
-                (s, "Frames: " ++ (show $ length s))
+                (s, "Frames: " ++ show (length s))
         -- History of frame Actions
     "fh" ->
-                (s, "History: " ++ (show $ map action s))
+                (s, "History: " ++ show (map action s))
 
         -- MAKE A COMMAND TO DISPLAY THE NUMBER OF ROUNDS (CALCULATE OR STORE IT)
     -- Analysis commands begin with a
@@ -314,9 +314,9 @@ plBets s@(f:_) act x a = case find ((== x) . num) $ players f of
         where ns = addFrame s [("action", FA nAct), ("plate", FI nPlat), ("players", FP nPls)]
               nPls = map plStatus (players f)
               nAct = act x a
-              nBal = (balance p) - a
-              nPlt = (onPlate p) + a
-              pPPlt = onPlate . head . filter ((== (x-1) `mod` (playersNum f)) . num) $ players f
+              nBal = balance p - a
+              nPlt = onPlate p + a
+              pPPlt = onPlate . head . filter ((== (x-1) `mod` playersNum f) . num) $ players f
 
               (nPlat, actStr) = case nAct of
                 Bet   _ _ -> (plate f + a, " bet ")
@@ -333,7 +333,7 @@ plBets s@(f:_) act x a = case find ((== x) . num) $ players f of
 plRevealsHand :: State -> Int -> [String] -> (State,String)
 plRevealsHand s@(f:_) x sCs = case find ((== x) . num) $ players f of
     Nothing -> (s, "Non-existent player")
-    Just p  -> case sequence $ map toCard sCs of
+    Just p  -> case mapM toCard sCs of
         Nothing -> (s, "Cards have been mistyped")
         Just cs -> (addFrame s $ updatePlayerAndTable f x cs [], "Player " ++ show x ++ " reveals " ++ show cs)
 
@@ -364,10 +364,10 @@ roundEnd s@(f:_)
             Won [num p] prize), ("plCards", PC []), ("plHand", PH $ Hand HighCard (HV Two) 0 [])]
             | otherwise        = newPlayer p [("onPlate", PI 0), ("plCards", PC []), ("plHand", PH $ Hand HighCard (HV Two) 0 [])]
           winnersPrizes = map (\p-> (num p,prize)) winners -- ADD SPLIT POTS ETC HERE!!!!!!!!!!
-          prize = (plate f) `div` (length winners)
+          prize = plate f `div` length winners
           winners = head . groupBy eqPlHands $ plsByHands
           justHands = map (\p-> (num p, (\h-> (hType h, hTField h)) $ plHand p)) plsByHands
-          plsByHands = reverse . sortBy cmpPlHands $ inRoundPls
+          plsByHands = sortBy (flip cmpPlHands) inRoundPls
           inRoundPls = filter inRound $ players f
           inRound p = case status p of
                 Out  _ -> False
@@ -384,16 +384,16 @@ roundEnd s@(f:_)
     -- Turn or River
 cardHandler :: State -> ([Card] -> Action) -> [String] -> (State,String)
 cardHandler s act sCs = maybe (s, "Cards have been mistyped") actFunc mCs
-    where mCs = sequence $ map toCard sCs
+    where mCs = mapM toCard sCs
           actFunc = case act [] of
-                        StartHand _ -> (\cs -> (startHand s cs,
-                                        "Starting hand added: " ++ (show cs)) )
-                        Flop _      -> (\cs -> (addCards s Flop cs,
-                                        "Flop added: " ++ (show cs)) )
-                        Turn _      -> (\cs -> (addCards s Turn cs,
-                                        "Turn added: " ++ (show cs)) )
-                        River _     -> (\cs -> (addCards s River cs,
-                                        "River added: " ++ (show cs)) )
+                        StartHand _ -> \cs -> (startHand s cs,
+                                        "Starting hand added: " ++ show cs)
+                        Flop _      -> \cs -> (addCards s Flop cs,
+                                        "Flop added: " ++ show cs)
+                        Turn _      -> \cs -> (addCards s Turn cs,
+                                        "Turn added: " ++ show cs)
+                        River _     -> \cs -> (addCards s River cs,
+                                        "River added: " ++ show cs)
 
 
     -- Read out any field of the current Frame
@@ -418,7 +418,7 @@ fieldHandler s@(f:_) funcStr = (s, msg)
     -- lists) his new cards and the table's new ones
 updatePlayerAndTable :: Frame -> Int -> [Card] -> [Card] -> [(String, FrameField)]
 updatePlayerAndTable f pNum pcs tcs = [("table", FC nTab), ("players", FP nPls)]
-    where nTab = tcs ++ (table f)
+    where nTab = tcs ++ table f
           nPls = map setPlrCards $ players f
           setPlrCards p
             | num p == pNum = newPlayer p [("plCards", PC nPcs), ("plHand", PH $ bestHand (nPcs ++ nTab))]

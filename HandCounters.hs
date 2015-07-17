@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          1.9 - 29/06/2015
+--          1.10 - 16-17/07/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -30,7 +30,7 @@ import GeneralFunctions (choose, combinations, ascLength, subsetOf, notSubsetOf,
 
 import Data.List (tails, group, groupBy, sort, sortBy, delete, nub, partition, union, (\\))
 import Data.Char (toLower)
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, isNothing, fromMaybe)
 import qualified Data.Sequence as Seq (replicateM)
 import Data.Foldable (toList)
 import Data.Function (on)
@@ -54,9 +54,7 @@ import HandTypeCheckers
 countBetterHandTypes :: Maybe HandType -> [Int] -> Deck -> [Card] -> [Card] -> [[HandTypeCount]]
 countBetterHandTypes mHt tcns d ocs cs = countHandTypes hts tcns d ocs cs
     where hts = enumFromThenTo RoyalFlush StraightFlush bht
-          bht = case mHt of
-            Just ht -> ht
-            Nothing -> hType $ bestHandType cs
+          bht = fromMaybe (hType $ bestHandType cs) mHt
 
 
     -- Return the HandTypeCounts for each given HandType for each given Target
@@ -142,7 +140,7 @@ possRoyalFlush = getCompleters RoyalFlush aphs
 
 
 possStraightFlush ocs cs = getCompleters StraightFlush aphs ocs cs
-    where aphs = concat $ map (fromSVG allSuits) apvs
+    where aphs = concatMap (fromSVG allSuits) apvs
             -- Remove the Straights which, if present, are overshadowed by another
             -- greater by one (a Card of Value just above them is in cs)
             -- Note: no risk of error on succ because only 9 taken below
@@ -153,8 +151,8 @@ possStraightFlush ocs cs = getCompleters StraightFlush aphs ocs cs
 
 
 possFourOfAKind ocs cs = getCompleters FourOfAKind aphs ocs cs
-    where aphs = filter (not . isJust . isStraightFlush . union cs) phs
-          phs = concat $ map (\val-> fromVSG [val] allSuits) allValues
+    where aphs = filter (isNothing . isStraightFlush . union cs) phs
+          phs = concatMap (\val-> fromVSG [val] allSuits) allValues
 
 
 possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
@@ -166,8 +164,8 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
 --            | isJust $ isStraightFlush cs           = []
 --            | otherwise = filter (\h-> all (`notSubsetOf` h) sfCmps) phs
             -- 2-Card-Max Straight (and Royal) Flush completers
-          sfCmps = concat . map getStrVs $ valuesPerSuit cs
-          getStrVs (s,vs) = map (map (\v-> Card v s)) . filter (((&&) <$> (<=2) <*> (/=0)) . length) $ map (\\vs) straightValues
+          sfCmps = concatMap getStrVs $ valuesPerSuit cs
+          getStrVs (s,vs) = map (map (`Card` s)) . filter (((&&) <$> (<=2) <*> (/=0)) . length) $ map (\\vs) straightValues
 
           phs = case filter ((>1) . length) $ valueDescGroups cs of
             (vcs1@[c,d,e]:vcs2:vcss) -> (:) (vcs1++vcs2) . getAphs $ justBetter vcs1 vcs2
@@ -186,7 +184,7 @@ possFullHouse ocs cs = getCompleters FullHouse aphs ocs cs
 
 
 possFlush ocs cs = getCompleters Flush aphs ocs cs
-    where aphs = filter (noFOAKsOrFullHouses . (union cs)) phs
+    where aphs = filter (noFOAKsOrFullHouses . union cs) phs
 --                    `using` parListChunk 100 rdeepseq
 --          phs = withStrategy (parListChunk 100 rdeepseq) $
           phs = case filter ((>=5) . length) $ suitGroups cs of
@@ -201,14 +199,14 @@ possFlush ocs cs = getCompleters Flush aphs ocs cs
           pvs = combinations 5 allValues \\ npvs
           npvs = implStrVs ++ explStrVs
             -- Implicit Straight Values (formed with the addition of the considered Cards)
-          implStrVs = concat $ map getVs npCompletersVs
+          implStrVs = concatMap getVs npCompletersVs
           getVs (origVs,vs) = map (\comVs-> sort (vs ++ comVs)) . combinations (5 - length vs) $ allValues \\ origVs
-          npCompletersVs = concat $ map getNpComplVs explStrVs
+          npCompletersVs = concatMap getNpComplVs explStrVs
           getNpComplVs origVs = nub $ map (\vs-> (origVs, origVs \\ vs)) csvsCombs
-          csvsCombs = concat $ map (flip combinations csvs) [1..length csvs]
+          csvsCombs = concatMap (`combinations` csvs) [1..length csvs]
           csvs = cardsValues cs
             -- Explicit Straight Values (has to be in this order to do so efficiently)
-          explStrVs = (enumFromTo Two Five ++ [Ace]) : (tail straightValues)
+          explStrVs = (enumFromTo Two Five ++ [Ace]) : tail straightValues
 
 
 possStraight ocs cs = getCompleters Straight aphs ocs cs
@@ -231,7 +229,7 @@ possStraight ocs cs = getCompleters Straight aphs ocs cs
           strFluVs v = map (delete v) $ filter (v `elem`) straightValues
 
             -- The cards in cs are already not present in these phs'
-          phs' = concat ([ncss . (\\csvs) $ head tsvs | tsvs <- init $ tails straightValues, noBetterStraight tsvs])
+          phs' = concat [ncss . (\\csvs) $ head tsvs | tsvs <- init $ tails straightValues, noBetterStraight tsvs]
 --                            `using` parListChunk 100 rdeepseq)
           noBetterStraight (svs:svss) = not $ any (`subsetOf` pBetterSVs) svss
             where pBetterSVs = csvs ++ (svs\\csvs)
@@ -342,8 +340,8 @@ possHighCard ocs cs = getCompleters HighCard aphs ocs cs
             | otherwise      = ([],[])
 
           flushSs = map (suit . head) . filter ((>=4) . length) $ suitGroups cs
-          straightVs = concat . filter ((==1) . length) $ map (\\ (sort csvs)) stpvs
-          stpvs = (enumFromTo Two Five ++ [Ace]) : (tail straightValues)
+          straightVs = concat . filter ((==1) . length) $ map (\\ sort csvs) stpvs
+          stpvs = (enumFromTo Two Five ++ [Ace]) : tail straightValues
 
           csvs = cardsValues cs
 
@@ -377,7 +375,7 @@ stageTcns stage = case toLower stage of
     -- EVOLVE THIS INTO USING ALL THE VALUES IN Deck
 handProb :: (Fractional a) => Int -> Deck -> [Card] -> a
 handProb ltd d cs
-    | null cs   = fromIntegral 1
+    | null cs   = 1
     | otherwise = ((/) `on` fromIntegral) drawsWithCs allPossDraws
         where -- The ok draws are the ones which contain the h cards and any of the
               -- possible sets of (k-h) cards wich can be made from the remaining (n-h) cards
@@ -398,7 +396,7 @@ straightValues = take 10 . map (take 5) . tails $ Ace:allValues
 noFOAKsOrFullHouses cs = case filter ((>=2) . length) $ valueDescGroups cs of
     [] -> True
     x:xs | length x  >= 4 -> False
-         | length x  == 3 && length xs >= 1 -> False
+         | length x  == 3 && not (null xs) -> False
          | otherwise      -> True
 
 
@@ -446,4 +444,3 @@ checkHtc  :: HandType -> [Card] -> [Card] -> [HandType]
 checkHtc  ht ocs cs = map    (         checkSingle cs) . snd $ getPossHtFunc ht ocs cs
     -- Return the HandType yielded by a completer
 checkSingle cs = hType . bestHandType . union cs
-

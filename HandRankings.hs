@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.18 - 09-10/05/2015
+--          0.19 - 16-17/07/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -107,7 +107,7 @@ rankFourOfAKind = rankNPlet FourOfAKind
     -- NOTE: There are 3744, but they depend only on the values of the triplet
     -- and the pair, therefore there are only 13*12 (3744/4 and / other combinations)
 rankFullHouse :: [Card] -> [Value] -> Int
-rankFullHouse cs vals = minRank FullHouse + (fromEnum three)*13 + (fromEnum pair)
+rankFullHouse cs vals = minRank FullHouse + fromEnum three * 13 + fromEnum pair
     where three = head vals
           pair  = last vals
 
@@ -142,7 +142,7 @@ rankThreeOfAKind = rankNPlet ThreeOfAKind
 rankTwoPair :: [Card] -> [Value] -> Int
 rankTwoPair cs vals = minRank TwoPair + valuesBaseSum
     where valuesBaseSum = sum $ zipWith (*) (map (13^) [0..]) addenda
-          addenda = reverse $ [fromEnum first, fromEnum second, fifthCard]
+          addenda = reverse [fromEnum first, fromEnum second, fifthCard]
           fifthCard = fromEnum . head $ filter ((`notElem` vals) . value) cs
           first  = head vals
           second = last vals
@@ -160,7 +160,7 @@ rankOnePair = rankNPlet OnePair
     -- NOTE: There are 1303560, but they depend only on the value of the highest
     -- card and the sum of the others'
 rankHighCard :: [Card] -> Value -> Int
-rankHighCard cs val = minRank HighCard + (fromEnum val)*13 + otherCardsSum
+rankHighCard cs val = minRank HighCard + fromEnum val * 13 + otherCardsSum
     where otherCardsSum = sum $ map (fromEnum . value) otherCards
           otherCards = filter ((/= val) . value) cs
 
@@ -232,7 +232,7 @@ handCombinations = intsLToCardsL . combinations 5 . cardsToInts
 
     -- Given an N-Plet kind of hand, return its rank among the existing ones
 rankNPlet :: HandType -> [Card] -> Value -> Int
-rankNPlet ht cs val = minRank ht + n*(fromEnum val)*13 + otherCardsSum
+rankNPlet ht cs val = minRank ht + n * fromEnum val * 13 + otherCardsSum
     where -- n is just a scaling factor in order to separate the highest lower
           -- specific N-Plet hands from the lowest higher ones.
           -- i.e. a pair of 2 with an Ace, King and Queen from a pair of 3 with

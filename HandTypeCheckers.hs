@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.7 - 29/05/2015
+--          0.8 - 16-17/07/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -117,7 +117,7 @@ isFlush cs = isLenType 5 suit $ suitDescGroups cs
     -- Returns the value of the highest card in the Straight and its constituting cards
 isStraight :: [Card] -> Maybe (Value,[Card])
 isStraight cs = isLenType 5 value inOrderAndOk
-    where inOrderAndOk = sortBy ((invCompare) `on` (value . head)) . filter ((>=5) . length) $ inOrder cs
+    where inOrderAndOk = sortBy (invCompare `on` (value . head)) . filter ((>=5) . length) $ inOrder cs
             -- More efficient than a reverse after the sort
           invCompare a b = case compare a b of
             LT -> GT
@@ -151,9 +151,9 @@ is2Nplet n m cs
                 else Just ([value x, value y], xygs)
     | otherwise                        = Nothing
         where xygs
-                | length xygs' < 5 = xygs' ++ (take (5 - length xygs') $ (concat gs) \\ xygs')
+                | length xygs' < 5 = xygs' ++ take (5 - length xygs') (concat gs \\ xygs')
                 | otherwise        = xygs'
-              xygs' = concat [take a xg, take b yg]
+              xygs' = take a xg ++ take b yg
               xys = map value . reverse $ sort [x,y]
               xg@(x:_):yg@(y:_):zgs = gs
               -- The reason why the above pattern is not matched directly
@@ -180,13 +180,13 @@ isLenType n suitOrValue css
     -- duplicating them
 inOrder :: [Card] -> [[Card]]
 inOrder cs = sortBy descLength $ concat inOrder'
-    where inOrder' = [map (map head) pgvgs] ++ (singleCards $ map (map tail) pgvgs)
+    where inOrder' = [map (map head) pgvgs] ++ singleCards (map (map tail) pgvgs)
           singleCards = map group . concat . noNull . map noNull
           noNull = filter (not . null)
 
           pgvgs :: [[[Card]]]
           pgvgs
-            | [Ace, Two] `subsetOf` values = (init pgvgs') ++ [last pgvgs' ++ [[head aces]]] ++ tailAces
+            | [Ace, Two] `subsetOf` values = init pgvgs' ++ [last pgvgs' ++ [[head aces]]] ++ tailAces
             | otherwise = pgvgs'
 
           values = map (value . head) vgs
@@ -203,5 +203,3 @@ inOrder cs = sortBy descLength $ concat inOrder'
           isPred v1 v2 = case v1 of
                 Two -> False
                 _   -> v2 == pred v1
-
-

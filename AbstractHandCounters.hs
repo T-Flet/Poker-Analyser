@@ -4,7 +4,7 @@
 --          Dr-Lord
 --
 --      Version:
---          0.3 - 18/06/2015
+--          0.4 - 16-17/07/2015
 --
 --      Description:
 --          Poker analysing shell.
@@ -37,7 +37,12 @@ import Control.Applicative ((<$>), (<*>))
 
 ---- 1 - COMPLETE HANDTYPE INSTANCES CALCULATORS -------------------------------
 
-
+    -- EVENTUALLY MAKE tcn INTO tcns
+countAbstrHandTypes :: [HandType] -> Int -> Deck -> [Card] -> [Card] -> [(HandType,Int)]
+countAbstrHandTypes hts tcn d ocs cs = map getCount hts
+    where getCount ht = (ht, getAbHtcFunc ht tcn d ocs cs hd hs)
+          hd = handData tcn ocs cs
+          hs = handStats d ocs cs
 
 
     -- Map each HandType to its abstract counter function
@@ -57,17 +62,7 @@ getAbHtcFunc ht = case ht of
 
 ---- 2 - SINGLE HANDTYPE INSTANCES CALCULATORS ---------------------------------
 
-    -- Call a single abstract HandType counter, without manually inputting all
-    -- the data yielded by the hand analysis functions
-
-    -- EVENTUALLY MAKE tcn INTO tcns
-singleAbstrHtCount :: HandType -> Int -> Deck -> [Card] -> [Card] -> Int
-singleAbstrHtCount ht tcn d ocs cs = getAbHtcFunc ht tcn d ocs cs hd hs
-    where hd = handData tcn ocs cs
-          hs = handStats d ocs cs
-
-
-    -- Each of these functions takes as input:
+    -- Each of these functions akes as input:
     --      The target number of cards which will be drawn by the end
     --      The current state of the Deck
     --      The Cards which are not supposed to be considered (e.g. someone else has them)
@@ -78,7 +73,6 @@ singleAbstrHtCount ht tcn d ocs cs = getAbHtcFunc ht tcn d ocs cs hd hs
     -- NOTE: These functions are guaranteed to make sense up to 7 target cards
 
 
-
 abstrCountRoyalFlush tcn d ocs cs (lid,ltd,ad) (hand,vdgs,sdgs) =
                                     htCheck RoyalFlush (hType hand) itIs itIsNot
     where itIs = lid `choose` ltd
@@ -87,13 +81,22 @@ abstrCountRoyalFlush tcn d ocs cs (lid,ltd,ad) (hand,vdgs,sdgs) =
           npss = nub . map suit $ filter ((>=Ten) . value) ocs
 
 
---abstrCountStraightFlush tcn d ocs cs (lid,ltd,ad) (hand,vdgs,sdgs) =
---                                    htCheck StraightFlush (hType hand) itIs itIsNot
---    where itIs = (lid `choose` ltd) - ((choose <$> (lid-) <*> (ltd-)) diff)
---          diff = ((-) `on` fromEnum) Ace . toV $ hTField hand
---
---          itIsNot =
+abstrCountStraightFlush tcn d ocs cs (lid,ltd,ad) (hand,vdgs,sdgs) =
+                                    htCheck StraightFlush (hType hand) itIs itIsNot
+    where itIs = (lid `choose` ltd) - ((choose <$> (lid-) <*> (ltd-)) diff)
+          diff = ((-) `on` fromEnum) Ace . toV $ hTField hand
 
+          itIsNot =
+
+possStraightFlush ocs cs = getCompleters StraightFlush aphs ocs cs
+    where aphs = concat $ map (fromSVG allSuits) apvs
+            -- Remove the Straights which, if present, are overshadowed by another
+            -- greater by one (a Card of Value just above them is in cs)
+            -- Note: no risk of error on succ because only 9 taken below
+          apvs = filter ((`notElem` csvs) . succ . last) pvs
+          csvs = cardsValues cs
+            -- Taking 9 (init) and not 10 prevents RoyalFlushes
+          pvs = init straightValues
 
 
 
@@ -139,6 +142,3 @@ straightValues = take 10 . map (take 5) . tails $ Ace:allValues
 
 
 ---- 4 - TESTING FUNCTIONS -----------------------------------------------------
-
-
-
