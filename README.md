@@ -1,12 +1,21 @@
 Poker Analyser
 ===
 
-Poker analysing shell.
+INCOMPLETE. I might pick it up again in the future; at present the returned
+probabilities are not always accurate (they diverge from the real ones in some
+conditions). It was a very fun project to code up.
+
+===
+
+Poker analysing shell, which provides game tracking with minimal input and, on
+request of the user, detailed probabilities of specific hands and outcomes.
+
     Inupts:
         Player's cards, table cards (later on: player's fiches and even
         later other players' as well).
         Possible user request for (his or other's) probability of a
         specific hand.
+
     Outputs:
         Probabilty of player's or others' specific hand.
         Specific request response.
