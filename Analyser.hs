@@ -402,7 +402,7 @@ fieldHandler s@(f:_) funcStr = (s, msg)
     where msg = case funcStr of
             "action"      -> val action
             "playersNum"  -> val playersNum
-            "userId"     -> val userId
+            "userId"      -> val userId
             "dealer"      -> val dealer
             "deck"        -> val deck
             "table"       -> val table

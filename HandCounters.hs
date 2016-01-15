@@ -416,23 +416,21 @@ cardsValues cs = nub $ map value cs
 
     -- Check (as described in checkHtCounts) only the appropriate HandTypes (eq
     -- or better than what cs constitute)
-checkBetterHandTypes :: [Card] -> [Card] -> [(HandType, [HandType])]
+checkBetterHandTypes, checkBetterHandTypesPar :: [Card] -> [Card] -> [(HandType, [HandType])]
 checkBetterHandTypes ocs cs = checkHandTypes hts ocs cs
     where hts = enumFromThenTo RoyalFlush StraightFlush . hType $ bestHandType cs
     -- Parallel Version
-checkBetterHandTypesPar :: [Card] -> [Card] -> [(HandType, [HandType])]
 checkBetterHandTypesPar ocs cs = checkBetterHandTypes ocs cs `using` parList rdeepseq
 
 
     -- Test whether any of the count functions of the given HandTypes yields a
     -- HandType which is not its own. In particular, lookout for ones higher
     -- than it. Also, count the instances of each
-checkHandTypes :: [HandType] -> [Card] -> [Card] -> [(HandType, [HandType])]
+checkHandTypes, checkHandTypesPar :: [HandType] -> [Card] -> [Card] -> [(HandType, [HandType])]
 checkHandTypes hts ocs cs = filter (not . null . snd) $ map (bad . getChecks) hts
     where bad (ht,chts) = (ht, nub . sort $ filter (/= ht) chts)
           getChecks ht = (ht, checkHtc ht ocs cs)
     -- Parallel Version
-checkHandTypesPar :: [HandType] -> [Card] -> [Card] -> [(HandType, [HandType])]
 checkHandTypesPar hts ocs cs = checkHandTypes hts ocs cs `using` parList rdeepseq
 
 
