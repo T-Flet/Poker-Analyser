@@ -22,24 +22,18 @@ request of the user, detailed probabilities of specific hands and outcomes.
         (Later: suggested bet)
 
 
+## Main Abstract Algorithm
 
 Very basically, whenever the player asks for the probability of something, this
 is what happens (only the steps needed by the specific request are executed):
-    - Everything is checked for changes since the last request and the following
-        recalculated if there are any;
-    - The Table Cards are analysed and their Hand ranked absolutely (for the
-        purposes of the other players’ chances), then the Player Cards are added
-        and the same procedure is repeated;
-    - Then the number of better Hands which can exist at that stage in the game
-        are calculated for both sets, which means cleverly subtracting amounts
-        from the total number of better Hands;
-    - Then the specific request is answered: it could be what the best Hand the
-        player can get at that turn is, or simply (not in the least) what the
-        probability of winning that round is.
+- Everything is checked for changes since the last request and the following recalculated if there are any;
+- The Table Cards are analysed and their Hand ranked absolutely (for the purposes of the other players’ chances), then the Player Cards are added and the same procedure is repeated;
+- Then the number of better Hands which can exist at that stage in the game are calculated for both sets, which means cleverly subtracting amounts from the total number of better Hands;
+- Then the specific request is answered: it could be what the best Hand the player can get at that turn is, or simply (not in the least) what the probability of winning that round is.
 
 
 
-Files in project:
+## Files in the project:
 
     Analyser.hs : The main program, containing the shell and calling on all others.
 
