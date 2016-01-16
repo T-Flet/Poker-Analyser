@@ -6,7 +6,7 @@ at present the returned probabilities are not always accurate (they diverge from
 the real ones in some conditions). It was a very fun project to code up.
 
 
-Short blogpost on this project: http://isaacjordan.me/blog/2016/01/poker-probabilities-in-haskell/
+Short guest-blogpost on this project: http://isaacjordan.me/blog/2016/01/poker-probabilities-in-haskell/
 
 ===
 
